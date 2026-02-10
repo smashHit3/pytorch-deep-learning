@@ -15,7 +15,7 @@ class MLP(nn.Module):
         self.hidden = nn.Linear(20, 256)
         self.out = nn.Linear(256, 10)
 
-    def froward(self, x):
+    def forward(self, x):
         return self.out(F.relu(self.hidden(x)))
     
 net = MLP()
