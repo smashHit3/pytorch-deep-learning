@@ -24,3 +24,27 @@ class Conv2D(nn.Module):
     def forward(self, x):
         return corr2d(x, self.weight) + self.bias
     
+X = torch.ones((6, 8))
+X[:, 2:6] = 0
+print(X)
+K = torch.tensor([[1.0, -1.0]])
+Y = corr2d(X, K)
+print(Y)
+
+# Y = corr2d(X.t(), K)
+# print(Y)
+
+conv2d = nn.Conv2d(1, 1, kernel_size=(1, 2), bias=False)
+X = X.reshape((1, 1, 6, 8))
+Y = Y.reshape((1, 1, 6, 7))
+
+for i in range(10):
+    Y_hat = conv2d(X)
+    l = ((Y_hat - Y) ** 2).sum()
+    conv2d.zero_grad()
+    l.backward()
+    print(f'epoch {i + 1}, loss {l.item():.3f}')
+    with torch.no_grad():
+        conv2d.weight -= 3e-2 * conv2d.weight.grad
+
+print(conv2d.weight.data.reshape((1, 2)))
