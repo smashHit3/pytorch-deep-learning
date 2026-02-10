@@ -38,7 +38,7 @@ conv2d = nn.Conv2d(1, 1, kernel_size=(1, 2), bias=False)
 X = X.reshape((1, 1, 6, 8))
 Y = Y.reshape((1, 1, 6, 7))
 
-for i in range(10):
+for i in range(100):
     Y_hat = conv2d(X)
     l = ((Y_hat - Y) ** 2).sum()
     conv2d.zero_grad()
