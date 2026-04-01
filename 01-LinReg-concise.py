@@ -1,4 +1,4 @@
-import my_d2l as d2l
+import myd2l as d2l
 
 import torch
 import numpy as np

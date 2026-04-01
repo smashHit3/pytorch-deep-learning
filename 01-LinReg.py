@@ -19,11 +19,11 @@ print('features:', features[0], '\nlabel:', labels[0])
 
 plt.figure(figsize=(6, 4))  # Use pyplot.figure to set the figure size
 plt.scatter(features[:, 1].numpy(), labels.numpy(), 1)
-# plt.show()
-# 保存图片（支持 png/jpg/pdf/svg）
-plt.savefig("my_plot.png")
-# 必须加：关闭画布，释放内存
-plt.close()
+plt.show()
+# # 保存图片（支持 png/jpg/pdf/svg）
+# plt.savefig("my_plot.png")
+# # 必须加：关闭画布，释放内存
+# plt.close()
 
 def data_iter(batch_size, features, labels):
     num_examples = len(features)
