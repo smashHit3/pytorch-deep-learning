@@ -1,4 +1,4 @@
-import myd2l as d2l
+import shared as d2l
 
 import torch
 from IPython import display
@@ -49,8 +49,17 @@ def updater(batch_size): # 定义优化算法
 
 num_epochs = 10
 
+def predict_ch3(net, test_iter, n=6): # 定义预测函数
+    for X, y in test_iter: # 取一个小批量来预测
+        break
+    trues = d2l.get_fashion_mnist_labels(y) # 获取真实标签
+    preds = d2l.get_fashion_mnist_labels(net(X).argmax(axis=1)) # 获取预测标签
+    titles = [true +'\n' + pred for true, pred in zip(trues, preds)] # 将真实标签和预测标签拼接在一起作为标题
+    d2l.show_images(X[0:n].reshape((n, 28, 28)), 1, n, titles=titles[0:n]) # 显示前n张图片及其标题
+
 def main():
     d2l.train_ch3(net, train_iter, test_iter, cross_entropy, num_epochs, updater)
+    predict_ch3(net, test_iter)
     plt.show()
 
 if __name__ == '__main__':

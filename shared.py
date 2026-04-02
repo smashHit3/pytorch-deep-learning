@@ -151,6 +151,12 @@ def load_data_fashion_mnist(batch_size, resize=None):
             data.DataLoader(mnist_test, batch_size, shuffle=False, 
                             num_workers=get_dataloader_workers()))
 
+def get_fashion_mnist_labels(labels):
+    """返回Fashion-MNIST数据集的文本标签"""
+    text_labels = ['t-shirt', 'trouser', 'pullover', 'dress', 'coat',
+                   'sandal', 'shirt', 'sneaker', 'bag', 'ankle boot']
+    return [text_labels[int(i)] for i in labels]
+
 def accuracy(y_hat, y): # 评估准确率
     if len(y_hat.shape) > 1 and y_hat.shape[1] > 1: 
         # 如果y_hat是二维的, 就取每行最大的元素的索引作为预测类别
@@ -204,3 +210,20 @@ def train_ch3(net, train_iter, test_iter, loss, num_epochs, updater):
     assert train_loss < 0.5, f"训练损失过大: {train_loss}"
     assert train_acc < 1 and train_acc > 0.7, f"训练准确率过高或过低: {train_acc}"
     assert test_acc < 1 and test_acc > 0.7, f"测试准确率过高或过低: {test_acc}"
+
+def show_images(imgs, num_rows, num_cols, titles=None, scale=1.5):
+    """绘制图像列表"""
+    figsize = (num_cols * scale, num_rows * scale)
+    _, axes = plt.subplots(num_rows, num_cols, figsize=figsize)
+    axes = axes.flatten()
+    for i, (ax, img) in enumerate(zip(axes, imgs)):
+        if torch.is_tensor(img):
+            # 如果img是一个张量, 就将它转换为numpy数组
+            ax.imshow(img.numpy())
+        else:
+            ax.imshow(img)
+        ax.axes.get_xaxis().set_visible(False)
+        ax.axes.get_yaxis().set_visible(False)
+        if titles:
+            ax.set_title(titles[i])
+    return axes
