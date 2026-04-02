@@ -86,7 +86,7 @@ class Accumulator:
     def __getitem__(self, idx):
         # 通过索引获取累加结果
         return self.data[idx]
-    
+
 class Timer:
     """记录多次运行时间"""
     def __init__(self):
