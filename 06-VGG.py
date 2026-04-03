@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 import shared as d2l
+import matplotlib.pyplot as plt
 
 def vgg_block(num_convs, in_channels, out_channels):
     layers = []
@@ -24,5 +25,22 @@ def vgg(conv_arch):
         *conv_blks, nn.Flatten(),
         nn.Linear(out_channels * 7 * 7, 4096), nn.ReLU(), nn.Dropout(0.5), 
         nn.Linear(4096, 4096), nn.ReLU(), nn.Dropout(0.5), 
-        nn.Linear(4096))
+        nn.Linear(4096, 10))
 
+net = vgg(conv_arch)
+
+X = torch.randn(size=(1, 1, 224, 224))
+for blk in net:
+    X = blk(X)
+    print(blk.__class__.__name__, "output shape:\t", X.shape)
+
+ratio = 4
+small_conv_arch = [(pair[0], pair[1] // ratio) for pair in conv_arch]
+net = vgg(small_conv_arch)
+
+lr, num_epochs, batch_size = 0.1, 10, 128
+train_iter, test_iter = d2l.load_data_fashion_mnist(batch_size, resize=224)
+
+if __name__ == '__main__':
+    d2l.train_ch6(net, train_iter, test_iter, num_epochs, lr, d2l.try_gpu())
+    plt.show()
