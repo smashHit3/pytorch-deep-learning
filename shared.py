@@ -1,9 +1,11 @@
 from torchvision import transforms
 from torch.utils import data
+from torch import nn
 import torch
 import torchvision
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 
 def use_svg_like_display():
     """Python 脚本中模拟 SVG 级高清显示"""
@@ -59,15 +61,20 @@ class Animator:  #@save
         if self.Y is None:
             self.Y = [[] for _ in range(n)]
         for i, (a, b) in enumerate(zip(x, y)):
+            if b is None:
+                continue
             self.X[i].append(a)
             self.Y[i].append(b)
         # 重新绘制所有数据点
-        self.axes[0].cla() # 清除当前坐标轴
-        for x, y, fmt, label in zip(self.X, self.Y, self.fmts, self.legend):
-            self.axes[0].plot(x, y, fmt, label=label) # 绘制数据点并加标签
-        self.axes[0].legend() # 显示图例
-        plt.draw() # 更新图形
-        plt.pause(0.001) # 暂停以显示更新
+        self.axes[0].cla()  # 清除当前坐标轴
+        for x_vals, y_vals, fmt, label in zip(self.X, self.Y, self.fmts, self.legend):
+            if len(x_vals) == 0 or len(y_vals) == 0:
+                continue
+            self.axes[0].plot(x_vals, y_vals, fmt, label=label)  # 绘制数据点并加标签
+        if self.legend:
+            self.axes[0].legend()  # 显示图例
+        plt.draw()  # 更新图形
+        plt.pause(0.001)  # 暂停以显示更新
 
 class Accumulator:
     """在n个变量上累加"""
@@ -87,35 +94,33 @@ class Accumulator:
         # 通过索引获取累加结果
         return self.data[idx]
 
-class Timer:
+class Timer:  #@save
     """记录多次运行时间"""
     def __init__(self):
+        # 初始化：存储每次计时的耗时，自动开始第一次计时
         self.times = []
         self.start()
 
     def start(self):
-        """开始计时"""
-        self.tik = torch.cuda.Event(enable_timing=True)
-        self.tok = torch.cuda.Event(enable_timing=True)
-        self.tik.record()
+        """启动计时器"""
+        self.tik = time.perf_counter()  # 记录开始时间戳（高精度）
 
     def stop(self):
-        """结束计时"""
-        self.tok.record()
-        torch.cuda.synchronize() # 等待计时器停止
-        self.times.append(self.tik.elapsed_time(self.tok))
+        """停止计时器并将时间记录在列表中"""
+        self.times.append(time.perf_counter() - self.tik)  # 计算耗时并保存
+        return self.times[-1]  # 返回最近一次的耗时
+
+    def sum(self):
+        """返回总时间"""
+        return sum(self.times)
 
     def avg(self):
         """返回平均时间"""
-        return sum(self.times) / len(self.times)
+        return self.sum() / len(self.times)
 
-    def sum(self):
-        """返回时间总和"""
-        return sum(self.times)
-
-    def cumsum(self):
-        """返回时间的累积和"""
-        return np.array(self.times).cumsum().tolist()
+    def reset(self):
+        """重置计时器"""
+        self.times = []
 
 def synthetic_data(w, b, num_examples):
     """生成 y = Xw + b + 噪声"""
@@ -235,3 +240,68 @@ def predict_ch3(net, test_iter, n=6): # 定义预测函数
     preds = get_fashion_mnist_labels(net(X).argmax(axis=1)) # 获取预测标签
     titles = [true +'\n' + pred for true, pred in zip(trues, preds)] # 将真实标签和预测标签拼接在一起作为标题
     show_images(X[0:n].reshape((n, 28, 28)), 1, n, titles=titles[0:n]) # 显示前n张图片及其标题
+
+def evaluate_accuracy_gpu(net, data_iter, device=None):
+    """使用GPU计算模型在数据集上的准确率"""
+    if isinstance(net, torch.nn.Module):
+        net.eval()  # 将模型设置为评估模式
+        if not device:
+            device = next(iter(net.parameters())).device
+    metric = Accumulator(2)  # 正确预测数、预测总数
+    with torch.no_grad():
+        for X, y in data_iter:
+            if isinstance(X, list):
+                # BERT微调所需的（之后将介绍）
+                X = [x.to(device) for x in X]
+            else:
+                X = X.to(device)
+            y = y.to(device)
+            metric.add(accuracy(net(X), y), y.numel())
+    return metric[0] / metric[1]
+
+#@save
+def train_ch6(net, train_iter, test_iter, num_epochs, lr, device):
+    """用GPU训练模型(在第六章定义)"""
+    def init_weights(m):
+        if type(m) == nn.Linear or type(m) == nn.Conv2d:
+            nn.init.xavier_uniform_(m.weight)
+    net.apply(init_weights)
+    print('training on', device)
+    net.to(device)
+    optimizer = torch.optim.SGD(net.parameters(), lr=lr)
+    loss = nn.CrossEntropyLoss()
+    animator = Animator(xlabel='epoch', xlim=[1, num_epochs],
+                        legend=['train loss', 'train acc', 'test acc'])
+    timer, num_batches = Timer(), len(train_iter)
+    for epoch in range(num_epochs):
+        # 训练损失之和，训练准确率之和，样本数
+        metric = Accumulator(3)
+        net.train()
+        for i, (X, y) in enumerate(train_iter):
+            timer.start()
+            optimizer.zero_grad()
+            X, y = X.to(device), y.to(device)
+            y_hat = net(X)
+            l = loss(y_hat, y)
+            l.backward()
+            optimizer.step()
+            with torch.no_grad():
+                metric.add(l * X.shape[0], accuracy(y_hat, y), X.shape[0])
+            timer.stop()
+            train_l = metric[0] / metric[2]
+            train_acc = metric[1] / metric[2]
+            if (i + 1) % (num_batches // 5) == 0 or i == num_batches - 1:
+                animator.add(epoch + (i + 1) / num_batches,
+                             (train_l, train_acc, None))
+        test_acc = evaluate_accuracy_gpu(net, test_iter)
+        animator.add(epoch + 1, (None, None, test_acc))
+    print(f'loss {train_l:.3f}, train acc {train_acc:.3f}, '
+          f'test acc {test_acc:.3f}')
+    print(f'{metric[2] * num_epochs / timer.sum():.1f} examples/sec '
+          f'on {str(device)}')
+
+def try_gpu(i=0):  #@save
+    """如果存在, 则返回gpu(i), 否则返回cpu()"""
+    if torch.cuda.device_count() >= i + 1:  # 检查是否有第i+1个GPU可用
+        return torch.device(f'cuda:{i}')    # 返回指定GPU设备对象
+    return torch.device('cpu')              # 否则返回CPU设备对象
