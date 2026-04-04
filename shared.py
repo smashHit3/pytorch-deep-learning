@@ -260,7 +260,7 @@ def evaluate_accuracy_gpu(net, data_iter, device=None):
     return metric[0] / metric[1]
 
 #@save
-def train_ch6(net, train_iter, test_iter, num_epochs, lr, device):
+def train_ch6(net, train_iter, test_iter, num_epochs, lr, device, show_animation=False):
     """用GPU训练模型(在第六章定义)"""
     def init_weights(m):
         if type(m) == nn.Linear or type(m) == nn.Conv2d:
@@ -270,8 +270,10 @@ def train_ch6(net, train_iter, test_iter, num_epochs, lr, device):
     net.to(device)
     optimizer = torch.optim.SGD(net.parameters(), lr=lr)
     loss = nn.CrossEntropyLoss()
-    animator = Animator(xlabel='epoch', xlim=[1, num_epochs],
-                        legend=['train loss', 'train acc', 'test acc'])
+    animator = None
+    if show_animation:
+        animator = Animator(xlabel='epoch', xlim=[1, num_epochs],
+                            legend=['train loss', 'train acc', 'test acc'])
     timer, num_batches = Timer(), len(train_iter)
     for epoch in range(num_epochs):
         # 训练损失之和，训练准确率之和，样本数
@@ -291,10 +293,17 @@ def train_ch6(net, train_iter, test_iter, num_epochs, lr, device):
             train_l = metric[0] / metric[2]
             train_acc = metric[1] / metric[2]
             if (i + 1) % (num_batches // 5) == 0 or i == num_batches - 1:
-                animator.add(epoch + (i + 1) / num_batches,
-                             (train_l, train_acc, None))
+                if animator:
+                    animator.add(epoch + (i + 1) / num_batches,
+                                 (train_l, train_acc, None))
+                else:
+                    print(f'epoch {epoch + 1}, batch {i + 1}/{num_batches}, '
+                          f'train loss {train_l:.3f}, train acc {train_acc:.3f}')
         test_acc = evaluate_accuracy_gpu(net, test_iter)
-        animator.add(epoch + 1, (None, None, test_acc))
+        if animator:
+            animator.add(epoch + 1, (None, None, test_acc))
+        else:
+            print(f'epoch {epoch + 1}, test acc {test_acc:.3f}')
     print(f'loss {train_l:.3f}, train acc {train_acc:.3f}, '
           f'test acc {test_acc:.3f}')
     print(f'{metric[2] * num_epochs / timer.sum():.1f} examples/sec '
