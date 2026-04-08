@@ -3,9 +3,82 @@ from torch.utils import data
 from torch import nn
 import torch
 import torchvision
+import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+
+# ===================== 代理设置（直接复制这一段）=====================
+import os
+# 替换为你的本地代理地址 + 端口（Clash/小飞机/梯子默认端口）
+# 常见端口：7890(Clash)、10809(V2Ray)、10808(Shadowrocket)
+proxy = "http://127.0.0.1:7890"  
+
+# 设置全局代理
+os.environ["HTTP_PROXY"] = proxy
+os.environ["HTTPS_PROXY"] = proxy
+os.environ["ALL_PROXY"] = proxy
+# 忽略本地地址，不走代理
+os.environ["NO_PROXY"] = "localhost,127.0.0.1,::1"
+# ==================================================================
+
+# ===================== 1. 核心：残差块（D2L原版）=====================
+# ResNet18 使用两层3×3卷积的基础残差块
+class Residual(nn.Module):
+    """The Residual block of ResNet models.
+
+    Defined in :numref:`sec_resnet`"""
+    def __init__(self, num_channels, use_1x1conv=False, strides=1):
+        super().__init__()
+        self.conv1 = nn.LazyConv2d(num_channels, kernel_size=3, padding=1,
+                                   stride=strides)
+        self.conv2 = nn.LazyConv2d(num_channels, kernel_size=3, padding=1)
+        if use_1x1conv:
+            self.conv3 = nn.LazyConv2d(num_channels, kernel_size=1,
+                                       stride=strides)
+        else:
+            self.conv3 = None
+        self.bn1 = nn.LazyBatchNorm2d()
+        self.bn2 = nn.LazyBatchNorm2d()
+
+    def forward(self, X):
+        Y = F.relu(self.bn1(self.conv1(X)))
+        Y = self.bn2(self.conv2(Y))
+        if self.conv3:
+            X = self.conv3(X)
+        Y += X
+        return F.relu(Y)
+
+# ===================== 2. 封装：ResNet18 函数（对应d2l.resnet18）=====================
+def resnet18(num_classes, in_channels=1):
+    """A slightly modified ResNet-18 model.
+
+    Defined in :numref:`sec_multi_gpu_concise`"""
+    def resnet_block(in_channels, out_channels, num_residuals,
+                     first_block=False):
+        blk = []
+        for i in range(num_residuals):
+            if i == 0 and not first_block:
+                blk.append(Residual(out_channels, use_1x1conv=True,
+                                        strides=2))
+            else:
+                blk.append(Residual(out_channels))
+        return nn.Sequential(*blk)
+
+    # This model uses a smaller convolution kernel, stride, and padding and
+    # removes the max-pooling layer
+    net = nn.Sequential(
+        nn.Conv2d(in_channels, 64, kernel_size=3, stride=1, padding=1),
+        nn.BatchNorm2d(64),
+        nn.ReLU())
+    net.add_module("resnet_block1", resnet_block(64, 64, 2, first_block=True))
+    net.add_module("resnet_block2", resnet_block(64, 128, 2))
+    net.add_module("resnet_block3", resnet_block(128, 256, 2))
+    net.add_module("resnet_block4", resnet_block(256, 512, 2))
+    net.add_module("global_avg_pool", nn.AdaptiveAvgPool2d((1,1)))
+    net.add_module("fc", nn.Sequential(nn.Flatten(),
+                                       nn.Linear(512, num_classes)))
+    return net
 
 def use_svg_like_display():
     """Python 脚本中模拟 SVG 级高清显示"""
@@ -314,3 +387,53 @@ def try_gpu(i=0):  #@save
     if torch.cuda.device_count() >= i + 1:  # 检查是否有第i+1个GPU可用
         return torch.device(f'cuda:{i}')    # 返回指定GPU设备对象
     return torch.device('cpu')              # 否则返回CPU设备对象
+
+def try_all_gpus():  #@save
+    """返回所有可用的GPU, 否则返回[cpu(),]"""
+    devices = [torch.device(f'cuda:{i}') for i in range(torch.cuda.device_count())]
+    return devices if devices else [torch.device('cpu')]
+
+def train_batch_ch13(net, X, y, loss, trainer, devices):
+    """用多GPU进行小批量训练"""
+    if isinstance(X, list):
+        # 微调BERT中所需
+        X = [x.to(devices[0]) for x in X]
+    else:
+        X = X.to(devices[0])
+    y = y.to(devices[0])
+    net.train()
+    trainer.zero_grad()
+    pred = net(X)
+    l = loss(pred, y)
+    l.sum().backward()
+    trainer.step()
+    train_loss_sum = l.sum()
+    train_acc_sum = accuracy(pred, y)
+    return train_loss_sum, train_acc_sum
+
+def train_ch13(net, train_iter, test_iter, loss, trainer, num_epochs,
+               devices=try_all_gpus()):
+    """用多GPU进行模型训练"""
+    timer, num_batches = Timer(), len(train_iter)
+    animator = Animator(xlabel='epoch', xlim=[1, num_epochs], ylim=[0, 1],
+                        legend=['train loss', 'train acc', 'test acc'])
+    net = nn.DataParallel(net, device_ids=devices).to(devices[0])
+    for epoch in range(num_epochs):
+        # 4个维度：储存训练损失，训练准确度，实例数，特点数
+        metric = Accumulator(4)
+        for i, (features, labels) in enumerate(train_iter):
+            timer.start()
+            l, acc = train_batch_ch13(
+                net, features, labels, loss, trainer, devices)
+            metric.add(l, acc, labels.shape[0], labels.numel())
+            timer.stop()
+            if (i + 1) % (num_batches // 5) == 0 or i == num_batches - 1:
+                animator.add(epoch + (i + 1) / num_batches,
+                             (metric[0] / metric[2], metric[1] / metric[3],
+                              None))
+        test_acc = evaluate_accuracy_gpu(net, test_iter)
+        animator.add(epoch + 1, (None, None, test_acc))
+    print(f'loss {metric[0] / metric[2]:.3f}, train acc '
+          f'{metric[1] / metric[3]:.3f}, test acc {test_acc:.3f}')
+    print(f'{metric[2] * num_epochs / timer.sum():.1f} examples/sec on '
+          f'{str(devices)}')
