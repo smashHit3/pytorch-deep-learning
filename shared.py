@@ -1,3 +1,7 @@
+import zipfile
+import tarfile
+import hashlib
+import requests
 from torchvision import transforms
 from torch.utils import data
 from torch import nn
@@ -21,6 +25,53 @@ os.environ["ALL_PROXY"] = proxy
 # 忽略本地地址，不走代理
 os.environ["NO_PROXY"] = "localhost,127.0.0.1,::1"
 # ==================================================================
+
+DATA_HUB = dict()
+DATA_URL = 'http://d2l-data.s3-accelerate.amazonaws.com/'
+
+def download(url, folder='../data', sha1_hash=None):
+    """Download a file to folder and return the local filepath.
+
+    Defined in :numref:`sec_utils`"""
+    if not url.startswith('http'):
+        # For back compatability
+        url, sha1_hash = DATA_HUB[url]
+    os.makedirs(folder, exist_ok=True)
+    fname = os.path.join(folder, url.split('/')[-1])
+    # Check if hit cache
+    if os.path.exists(fname) and sha1_hash:
+        sha1 = hashlib.sha1()
+        with open(fname, 'rb') as f:
+            while True:
+                data = f.read(1048576)
+                if not data:
+                    break
+                sha1.update(data)
+        if sha1.hexdigest() == sha1_hash:
+            return fname
+    # Download
+    print(f'Downloading {fname} from {url}...')
+    r = requests.get(url, stream=True, verify=True)
+    with open(fname, 'wb') as f:
+        f.write(r.content)
+    return fname
+
+
+def download_extract(name, folder=None):
+    """Download and extract a zip/tar file.
+
+    Defined in :numref:`sec_utils`"""
+    fname = download(name)
+    base_dir = os.path.dirname(fname)
+    data_dir, ext = os.path.splitext(fname)
+    if ext == '.zip':
+        fp = zipfile.ZipFile(fname, 'r')
+    elif ext in ('.tar', '.gz'):
+        fp = tarfile.open(fname, 'r')
+    else:
+        assert False, 'Only zip/tar files can be extracted.'
+    fp.extractall(base_dir)
+    return os.path.join(base_dir, folder) if folder else data_dir
 
 # ===================== 1. 核心：残差块（D2L原版）=====================
 # ResNet18 使用两层3×3卷积的基础残差块
