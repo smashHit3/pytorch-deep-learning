@@ -1,21 +1,22 @@
-import os
+"""
+@File: alexnet_inference.py
+@Description: 使用训练好的AlexNet模型进行图像分类推理
+@Author: QianHua Liu
+@Email: 1983561291@qq.com
+@Date: 2026-04-15
+"""
 import json
 import torch
+import tools.config as config
 import matplotlib.pyplot as plt
 
 from torchvision import transforms
-from torchvision import models
-from torchsummary import summary
 from PIL import Image
 
 # 设置matplotlib支持中文显示
-plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei', 'DejaVu Sans', 'Arial Unicode MS', 'sans-serif']
+plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei']
 plt.rcParams['axes.unicode_minus'] = False
 plt.rcParams['font.family'] = 'sans-serif'
-# 获取当前文件所在目录的绝对路径，作为后续文件路径的基准
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# 检查是否有可用的GPU，如果有则使用GPU进行计算，否则使用CPU
-device = "cuda" if torch.cuda.is_available() else "cpu"
 
 def load_classnames(path_classnames, path_classnames_cn):
     """ 加载类别名称
@@ -48,62 +49,36 @@ def process_img(path_img):
         transforms.Resize(256),  # 将输入图像调整为256x256
         transforms.CenterCrop(224),  # 从中心裁剪出224x224的图
         transforms.ToTensor(),  # 将图像转换为PyTorch张量，并将像素值归一化到[0, 1]范围
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], 
-                             std=[0.229, 0.224, 0.225])  # 使用ImageNet的均值和标准差进行归一化
+        transforms.Normalize(mean=config.norm_mean, 
+                             std=config.norm_std)  # 使用ImageNet的均值和标准差进行归一化
     ])
     img_rgb = Image.open(path_img).convert("RGB")  # 打开图像并转换为RGB模式
     img_tensor = inference_transform(img_rgb)  # 对图像进行预处理
     img_tensor = img_tensor.unsqueeze(0)  # 在第0维添加一个批次维
-    img_tensor = img_tensor.to(device)  # 将图像张量移动到设备（CPU或GPU）
+    img_tensor = img_tensor.to(config.device)  # 将图像张量移动到设备（CPU或GPU）
     return img_tensor, img_rgb
 
-def load_model(path_state_dict, vis_model=False):
-    """ 加载AlexNet模型并加载预训练权重
-    Args:
-        path_state_dict: 模型权重文件路径
-        vis_model: 是否可视化模型结构, 默认为False
-    Returns:
-        model: 加载了预训练权重的AlexNet模型
-    """
-    model = models.alexnet()  # 加载AlexNet模型结构，但不加载预训练权重
-    pretrained_state_dict = torch.load(path_state_dict, weights_only=False)  # 加载预训练模型权重
-    model.load_state_dict(pretrained_state_dict)  # 将预训练权重加载到模型中
-    model = model.to(device)  # 将模型移动到设备（CPU或GPU）
-    model.eval()  # 将模型设置为评估模式
-    if vis_model:
-        summary(model, (3, 224, 224))  # 可视化模型结构，输入尺寸为(3, 224, 224)
-    return model
-
 if __name__ == "__main__":
-    """ =========== config =========== """
-    # path_img: 待预测图片路径
-    path_img = os.path.join(BASE_DIR, "..", "data", "predict", "GoldenRetrieverFromBaidu.jpg")
-    # path_state_dict: 模型权重文件路径
-    path_state_dict = os.path.join(BASE_DIR, "..", "data", "alexnet_state_dict.pth")
-    # path_classnames: imagenet类别名称文件路径
-    path_classnames = os.path.join(BASE_DIR, "..", "data", "predict", "imagenet1000.json")
-    # path_classnames_cn: imagenet中文类别名称文件路径
-    path_classnames_cn = os.path.join(BASE_DIR, "..", "data", "predict", "imagenet_classnames.txt")
-
-    print("path_img: ", path_img)
-    print("path_state_dict: ", path_state_dict)
-    print("path_classnames: ", path_classnames)
-    print("path_classnames_cn: ", path_classnames_cn)
+    """ =========== print config =========== """
+    print("path_img: ", config.path_img)
+    print("path_state_dict: ", config.path_state_dict)
+    print("path_classnames: ", config.path_classnames)
+    print("path_classnames_cn: ", config.path_classnames_cn)
 
     """ =========== load class names =========== """
-    cls_n, cls_n_cn = load_classnames(path_classnames, path_classnames_cn)
+    classnames, classnames_cn = load_classnames(config.path_classnames, config.path_classnames_cn)
 
-    print("cls_n.shape: ", len(cls_n))
-    print("cls_n_cn.shape: ", len(cls_n_cn))
-    
+    print("cls_n.shape: ", len(classnames))
+    print("cls_n_cn.shape: ", len(classnames_cn))
+
     """ =========== process image =========== """
-    img_tensor, img_rgb = process_img(path_img)
+    img_tensor, img_rgb = process_img(config.path_img)
 
     print("img_tensor shape: ", img_tensor.shape)
     print("img_rgb: ", img_rgb)
 
     """ =========== load model =========== """
-    alexnet_model = load_model(path_state_dict, vis_model=True)
+    alexnet_model = config.load_model(config.path_state_dict, vis_model=True)
 
     print("alexnet_model: ", alexnet_model)
 
@@ -122,11 +97,11 @@ if __name__ == "__main__":
     
     print("Top-5 predicted categories and probabilities:")
     for i in range(top5_prob.size(0)):
-        print(f"{cls_n_cn[top5_catid[i]]} ({cls_n[top5_catid[i]]}): {top5_prob[i].item():.4f}")
+        print(f"{classnames_cn[top5_catid[i]]} ({classnames[top5_catid[i]]}): {top5_prob[i].item():.4f}")
 
     """ =========== visualize results =========== """
     plt.figure(figsize=(8, 6))
     plt.imshow(img_rgb)  # 显示输入图像
-    plt.title(f"Predicted: {cls_n_cn[top5_catid[0]]} ({cls_n[top5_catid[0]]})\nInference time: {inference_time:.2f} ms")  # 设置标题，显示预测的类别和推理时间
+    plt.title(f"Predicted: {classnames_cn[top5_catid[0]]} ({classnames[top5_catid[0]]})\nInference time: {inference_time:.2f} ms")  # 设置标题，显示预测的类别和推理时间
     plt.axis("off")  # 关闭坐标轴显示
     plt.show()  # 显示图像
