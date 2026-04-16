@@ -68,8 +68,8 @@ if __name__ == "__main__":
     """ =========== load class names =========== """
     classnames, classnames_cn = load_classnames(config.path_classnames, config.path_classnames_cn)
 
-    print("cls_n.shape: ", len(classnames))
-    print("cls_n_cn.shape: ", len(classnames_cn))
+    print("classnames.shape: ", len(classnames))
+    print("classnames_cn.shape: ", len(classnames_cn))
 
     """ =========== process image =========== """
     img_tensor, img_rgb = process_img(config.path_img)

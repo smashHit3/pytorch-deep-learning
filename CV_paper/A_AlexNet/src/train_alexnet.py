@@ -5,6 +5,7 @@
 @Email: 1983561291@qq.com
 @Date: 2026-04-16
 """
+import os
 import torch
 import tools.config as config
 import matplotlib.pyplot as plt
@@ -16,11 +17,7 @@ from torch.utils.data import DataLoader
 def ten_crop_to_tensor_and_normalize(crops):
     return torch.stack([transforms.Normalize(mean=config.norm_mean, std=config.norm_std)(transforms.ToTensor()(crop)) for crop in crops])
 
-def is_not_fc_param(p, fc_ids):
-    return id(p) not in fc_ids
-
 if __name__ == "__main__":
-
     # 定义训练数据的变换，包括调整图像大小、中心裁剪、随机裁剪、随机水平翻转、转换为张量和归一化
     train_transform = transforms.Compose([
         # 将输入图像调整为256x256
@@ -62,9 +59,9 @@ if __name__ == "__main__":
 
     # 冻结卷积层的参数，使其在训练过程中不更新
     if config.freeze_layer_flag:
-        fc_parameters = alexnet_model.classifier.parameters()  # 获取全连接层的参数
+        fc_parameters = list(alexnet_model.classifier.parameters())  # 获取全连接层的参数
         fc_parameter_ids = list(map(id, fc_parameters))  # 获取全连接层参数的ID列表
-        base_parameters = filter(is_not_fc_param, alexnet_model.parameters())  # 获取卷积层的参数
+        base_parameters = [p for p in alexnet_model.parameters() if id(p) not in fc_parameter_ids]  # 获取卷积层的参数
         optimizer = torch.optim.SGD([
             {"params": base_parameters, "lr": config.learning_rate * 0.1},  # 卷积层使用较小的学习率
             {"params": fc_parameters, "lr": config.learning_rate}  # 全连接层使用原始学习率
@@ -73,10 +70,6 @@ if __name__ == "__main__":
         optimizer = torch.optim.SGD(alexnet_model.parameters(), lr=config.learning_rate, momentum=0.9)
 
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=config.lr_decay_step, gamma=0.1)
-
-    train_loss_curve = list()
-    train_accuracy_curve = list()
-    validation_accuracy_curve = list()
 
     for epoch in range(config.max_epochs):
         train_loss = 0.0
@@ -102,8 +95,6 @@ if __name__ == "__main__":
                 print(f"Epoch [{epoch + 1}/{config.max_epochs}], Step [{batch_idx + 1}/{len(train_loader)}], "
                       f"Loss: {train_loss / (batch_idx + 1):.4f}, "
                       f"Accuracy: {100 * train_correct / train_total:.2f}%")
-        train_loss_curve.append(train_loss / len(train_loader))
-        train_accuracy_curve.append(train_correct / train_total)
 
         scheduler.step()
         if epoch % config.validation_interval == 0:
@@ -132,20 +123,13 @@ if __name__ == "__main__":
                     validation_correct += (predicted == labels).sum().item()
                     validation_loss += loss.item()
                 
-            validation_accuracy_curve.append(validation_correct / validation_total)
             print(f"Epoch [{epoch + 1}/{config.max_epochs}], Validation Loss: {validation_loss / len(validation_loader):.4f}, "
                   f"Validation Accuracy: {100 * validation_correct / validation_total:.2f}%")
             alexnet_model.train()
-    
-    train_loss_x = list(range(len(train_loss_curve)))
-    train_accuracy_x = list(range(len(train_accuracy_curve)))
-    validation_accuracy_x = list(range(0, len(train_accuracy_curve), config.validation_interval))
-    plt.plot(train_loss_x, train_loss_curve, label="Train Loss")
-    plt.plot(train_accuracy_x, train_accuracy_curve, label="Train Accuracy")
-    plt.plot(validation_accuracy_x, validation_accuracy_curve, label="Validation Accuracy")
-    plt.xlabel("Epoch")
-    plt.ylabel("Value")
-    plt.title("Training Loss and Accuracy Curves")
-    plt.legend()
-    plt.grid()
-    plt.show()
+
+    # 训练完成后保存模型
+    results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "results")
+    os.makedirs(results_dir, exist_ok=True)
+    save_path = os.path.join(results_dir, "alexnet_trained.pth")
+    torch.save(alexnet_model.state_dict(), save_path)
+    print(f"训练完成，模型已保存到: {save_path}")

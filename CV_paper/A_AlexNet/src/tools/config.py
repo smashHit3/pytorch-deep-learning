@@ -23,13 +23,13 @@ train_dir = os.path.join(data_dir, "train")
 test_dir = os.path.join(data_dir, "test")
 
 max_epochs = 3
-batch_size = 128
+batch_size = 256
 learning_rate = 0.001
-log_interval = 1
+log_interval = 10
 validation_interval = 1
 lr_decay_step = 1
 num_workers = 4
-freeze_layer_flag = False
+freeze_layer_flag = True
 
 norm_mean = [0.485, 0.456, 0.406]
 norm_std = [0.229, 0.224, 0.225]
