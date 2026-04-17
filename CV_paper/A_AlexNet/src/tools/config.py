@@ -12,6 +12,7 @@ from torchsummary import summary
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 data_dir = os.path.join(base_dir, "..", "..", "data")
+results_dir = os.path.join(base_dir, "..", "..", "results")
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 path_img = os.path.join(data_dir, "predict", "GoldenRetrieverFromBaidu.jpg")
@@ -22,7 +23,7 @@ path_classnames_cn = os.path.join(data_dir, "predict", "imagenet_classnames.txt"
 train_dir = os.path.join(data_dir, "train")
 test_dir = os.path.join(data_dir, "test")
 
-max_epochs = 3
+max_epochs = 100
 batch_size = 256
 learning_rate = 0.001
 log_interval = 10

@@ -7,9 +7,9 @@
 """
 import os
 import torch
-import tools.config as config
 import matplotlib.pyplot as plt
 
+from tools import config
 from tools.cat_dog_dataset import CatDogDataset
 from torchvision import transforms
 from torch.utils.data import DataLoader

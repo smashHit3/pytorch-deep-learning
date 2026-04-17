@@ -7,9 +7,9 @@
 """
 import json
 import torch
-import tools.config as config
 import matplotlib.pyplot as plt
 
+from tools import config
 from torchvision import transforms
 from PIL import Image
 
