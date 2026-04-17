@@ -1,3 +1,10 @@
+"""
+@File: alexnet_visualization.py
+@Description: 使用训练好的AlexNet模型进行图像分类推理
+@Author: QianHua Liu
+@Email: 1983561291@qq.com
+@Date: 2026-04-17
+"""
 import os
 
 from torch import nn
@@ -20,8 +27,8 @@ if __name__ == "__main__":
             continue
         
         kernel_num += 1
-        if kernel_num > vis_max_num:
-            break
+        # if kernel_num > vis_max_num:
+        #     break
         
         kernels = sub_model.weight
         print(f"conv{kernel_num} kernels shape: {kernels.shape}")
@@ -31,7 +38,7 @@ if __name__ == "__main__":
             kernel_grid = vtuils.make_grid(kernel, nrow=8, normalize=True, scale_each=True)
             writer.add_image(f"conv{kernel_num}_kernel_{i}", kernel_grid, global_step=i)
 
-        kernels_all = kernels.view(-1, 3, kernel_height, kernel_width)
+        kernels_all = kernels.view(-1, 1, kernel_height, kernel_width)
         kernels_grid = vtuils.make_grid(kernels_all, nrow=8, normalize=True, scale_each=True)
         writer.add_image(f"conv{kernel_num}_kernels_all", kernels_grid, global_step=0)
 
