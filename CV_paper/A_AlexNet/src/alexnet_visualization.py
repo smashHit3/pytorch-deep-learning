@@ -33,7 +33,7 @@ if __name__ == "__main__":
 
         kernels_all = kernels.view(-1, 3, kernel_height, kernel_width)
         kernels_grid = vtuils.make_grid(kernels_all, nrow=8, normalize=True, scale_each=True)
-        writer.add_image(f"conv{kernel_num}_kernels_all", kernels_grid, global_step=620)
+        writer.add_image(f"conv{kernel_num}_kernels_all", kernels_grid, global_step=0)
 
     writer.close()
     writer = SummaryWriter(log_dir=log_dir, filename_suffix='_feature_map')
@@ -51,6 +51,6 @@ if __name__ == "__main__":
 
     conv1_feature_map = alexnet_model.features[0](image_tensor).transpose(1, 0)
     conv1_grid = vtuils.make_grid(conv1_feature_map, nrow=8, normalize=True, scale_each=True)
-    writer.add_image("conv1_feature_map", conv1_grid, global_step=620)
+    writer.add_image("conv1_feature_map", conv1_grid, global_step=0)
     print(f"conv1 feature map shape: {conv1_feature_map.shape}")
     writer.close()
