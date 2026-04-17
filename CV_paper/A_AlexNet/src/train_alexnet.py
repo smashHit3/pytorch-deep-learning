@@ -45,16 +45,20 @@ if __name__ == "__main__":
         transforms.Lambda(ten_crop_to_tensor_and_normalize)
     ])
 
+    # 创建训练和验证数据集，并使用DataLoader加载数据，设置批量大小、是否打乱数据和使用的线程数
     train_dataset = CatDogDataset(data_dir=config.train_dir, mode="train", transform=train_transform)
     validation_dataset = CatDogDataset(data_dir=config.train_dir, mode="val", transform=validation_transform)
 
+    # 使用DataLoader加载训练和验证数据集，设置批量大小、是否打乱数据和使用的线程数
     train_loader = DataLoader(train_dataset, batch_size=config.batch_size, 
                               shuffle=True, num_workers=config.num_workers)
     validation_loader = DataLoader(validation_dataset, batch_size=config.batch_size, 
                                    shuffle=False, num_workers=config.num_workers)
 
+    # 加载预训练的AlexNet模型，并将其移动到指定的设备（CPU或GPU）
     alexnet_model = config.load_model(config.path_state_dict, vis_model=True)
 
+    # 定义损失函数为交叉熵损失函数，适用于多分类问题
     loss_fn = torch.nn.CrossEntropyLoss()
 
     # 冻结卷积层的参数，使其在训练过程中不更新
@@ -67,25 +71,29 @@ if __name__ == "__main__":
             {"params": fc_parameters, "lr": config.learning_rate}  # 全连接层使用原始学习率
         ], momentum=0.9)
     else:
+        # 如果不冻结卷积层，则所有参数都使用相同的学习率进行优化
         optimizer = torch.optim.SGD(alexnet_model.parameters(), lr=config.learning_rate, momentum=0.9)
 
+    # 定义学习率调度器，每隔一定的训练步骤（step_size）将学习率乘以一个衰减因子（gamma），以便在训练过程中逐渐降低学习率
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=config.lr_decay_step, gamma=0.1)
 
     for epoch in range(config.max_epochs):
-        train_loss = 0.0
-        train_correct = 0.0
-        train_total = 0.0
+        train_loss = 0.0 # 累积训练损失
+        train_correct = 0.0 # 累积正确预测的样本数量
+        train_total = 0.0 # 累积训练样本总数
 
-        alexnet_model.train()
+        alexnet_model.train() # 将模型设置为训练模式，以启用dropout和batch normalization等训练特定的行为
+        # 遍历训练数据加载器中的每个批次，获取输入图像和对应的标签，并将它们移动到指定的设备（CPU或GPU）
         for batch_idx, (images, labels) in enumerate(train_loader):
+            # 将输入图像和标签移动到指定的设备（CPU或GPU），以便在训练过程中进行计算
             images, labels = images.to(config.device), labels.to(config.device)
-
+            # 在训练过程中，首先将优化器的梯度清零，以避免累积之前的梯度，然后将输入图像传递给模型进行前向传播，计算损失函数的值，并进行反向传播以计算梯度，最后更新模型的参数
             optimizer.zero_grad()
             outputs = alexnet_model(images)
             loss = loss_fn(outputs, labels)
             loss.backward()
             optimizer.step()
-
+            # 累积训练损失，并计算当前批次的预测结果，更新正确预测的样本数量和总样本数量
             train_loss += loss.item()
             _, predicted = torch.max(outputs.data, 1)
             train_total += labels.size(0)
@@ -95,18 +103,20 @@ if __name__ == "__main__":
                 print(f"Epoch [{epoch + 1}/{config.max_epochs}], Step [{batch_idx + 1}/{len(train_loader)}], "
                       f"Loss: {train_loss / (batch_idx + 1):.4f}, "
                       f"Accuracy: {100 * train_correct / train_total:.2f}%")
-
+        # 每个epoch结束后，调用学习率调度器的step()方法更新学习率，根据预设的衰减策略调整学习率，以便在训练过程中逐渐降低学习率，提高模型的收敛性能
         scheduler.step()
         if epoch % config.validation_interval == 0:
-            validation_loss = 0.0
-            validation_correct = 0.0
-            validation_total = 0.0
+            validation_loss = 0.0 # 累积验证损失
+            validation_correct = 0.0 # 累积正确预测的样本数量
+            validation_total = 0.0 # 累积验证样本总数
 
-            alexnet_model.eval()
+            alexnet_model.eval() # 将模型设置为评估模式，以禁用dropout和batch normalization等训练特定的行为
             with torch.no_grad():
                 for images, labels in validation_loader:
+                    # 将输入图像和标签移动到指定的设备（CPU或GPU），以便在验证过程中进行计算
                     images, labels = images.to(config.device), labels.to(config.device)
 
+                    # 获取输入图像的批次大小、裁剪数量、通道数、高度和宽度等维度信息，以便后续处理
                     batch_size, num_crops, channels, height, width = images.size()
                     # 将输入的图像张量从形状(batch_size, num_crops, channels, height, width)
                     # 调整为(batch_size * num_crops, channels, height, width)，以适应模型的输入要求
