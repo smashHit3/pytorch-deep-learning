@@ -75,12 +75,12 @@ def split_files(file_paths, train_ratio, val_ratio, seed):
     val_end = train_end + int(total * val_ratio)
     train_files = file_paths[:train_end]
     val_files = file_paths[train_end:val_end]
-    test_files = file_paths[val_end:] if val_end < total else []
+    test_files = file_paths[val_end:]
     return train_files, val_files, test_files
 
 
 def copy_or_move_files(file_paths, target_dir: Path, move=False, verbose=False):
-    if file_paths is []:
+    if len(file_paths) == 0:
         return
     target_dir.mkdir(parents=True, exist_ok=True)
     for source_path in file_paths:
@@ -144,7 +144,10 @@ def split_raw_dataset(
             print(f"  sample val:   {[p.name for p in val_files[:3]]}")
             print(f"  sample test:  {[p.name for p in test_files[:3]]}")
 
-    print(f"Split completed. Train: {train_dir}, Val: {val_dir}, Test: {test_dir}")
+    if test_dir.exists():
+        print(f"Split completed. Train: {train_dir}, Val: {val_dir}, Test: {test_dir}")
+    else:
+        print(f"Split completed. Train: {train_dir}, Val: {val_dir}. No test set created.")
     return train_dir, val_dir, test_dir
 
 
@@ -255,8 +258,8 @@ class CatDogDataset(Dataset):
             T.ToTensor(),
         ])
 
-        if self.train_ratio <= 0 or self.val_ratio < 0 or self.train_ratio + self.val_ratio >= 1.0:
-            raise ValueError("train_ratio and val_ratio must satisfy 0 < train_ratio < 1 and train_ratio + val_ratio < 1")
+        if self.train_ratio <= 0 or self.val_ratio < 0 or self.train_ratio + self.val_ratio > 1.0:
+            raise ValueError("train_ratio and val_ratio must satisfy 0 < train_ratio < 1 and train_ratio + val_ratio <= 1")
 
         files = [p for p in sorted(self.data_dir.iterdir()) if p.is_file() and p.suffix.lower() in VALID_EXT]
         labeled: List[Tuple[Path, int]] = []
