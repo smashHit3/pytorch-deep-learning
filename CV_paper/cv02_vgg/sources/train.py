@@ -17,6 +17,8 @@ def parse_args():
     parser.add_argument("--no-cuda", action="store_true", help="Disable CUDA training")
     parser.add_argument("--no-pin-memory", action="store_true", help="Disable pin memory for data loading")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
+    parser.add_argument("--save-path", type=Path, default=Path(__file__).resolve().parents[1] / "results" / "vgg16.pth",
+                        help="Path to save the trained model state.")
     parser.add_argument("--vgg-version", type=str, default="vgg16", help="Version of VGG model to train")
     return parser.parse_args()
 
@@ -71,20 +73,25 @@ def validate(model, device, val_loader, criterion):
 def main():
     args = parse_args()
     device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
+    print(f"Using device: {device}")
     train_loader, val_loader, _ = get_data_loaders(
         data_root=args.data_root,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
+        pin_memory=not args.no_pin_memory,
+        train_ratio=0.8,
+        val_ratio=0.2,
+        seed=args.seed,
     )
     vgg_version = args.vgg_version
     if vgg_version == "vgg11":
-        model = vgg11(num_classes=2).to(device)
+        model = vgg11(num_classes=2, init_weights=True).to(device)
     elif vgg_version == "vgg13":
-        model = vgg13(num_classes=2).to(device)
+        model = vgg13(num_classes=2, init_weights=True).to(device)
     elif vgg_version == "vgg16":
-        model = vgg16(num_classes=2).to(device)
+        model = vgg16(num_classes=2, init_weights=True).to(device)
     elif vgg_version == "vgg19":
-        model = vgg19(num_classes=2).to(device)
+        model = vgg19(num_classes=2, init_weights=True).to(device)
     else:
         raise ValueError("Invalid VGG version")
     criterion = nn.CrossEntropyLoss()
@@ -94,6 +101,10 @@ def main():
         train_loss, train_acc = train_epoch(model, device, train_loader, criterion, optimizer)
         val_loss, val_acc = validate(model, device, val_loader, criterion)
         print(f"Epoch {epoch+1}/{num_epochs} - Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")
+
+    args.save_path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(model.state_dict(), str(args.save_path))
+    print(f"Saved VGG weights to {args.save_path}")
 
 if __name__ == "__main__":
     main()
