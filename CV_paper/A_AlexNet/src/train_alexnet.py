@@ -10,7 +10,7 @@ import torch
 import matplotlib.pyplot as plt
 
 from tools import config
-from tools.cat_dog_dataset import CatDogDataset
+from tools.data_processor import CatDogDataset
 from torchvision import transforms
 from torch.utils.data import DataLoader
 
