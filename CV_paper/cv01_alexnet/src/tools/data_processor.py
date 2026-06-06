@@ -75,11 +75,13 @@ def split_files(file_paths, train_ratio, val_ratio, seed):
     val_end = train_end + int(total * val_ratio)
     train_files = file_paths[:train_end]
     val_files = file_paths[train_end:val_end]
-    test_files = file_paths[val_end:]
+    test_files = file_paths[val_end:] if val_end < total else None
     return train_files, val_files, test_files
 
 
 def copy_or_move_files(file_paths, target_dir: Path, move=False, verbose=False):
+    if file_paths is None:
+        return
     target_dir.mkdir(parents=True, exist_ok=True)
     for source_path in file_paths:
         destination = target_dir / source_path.name
@@ -100,7 +102,7 @@ def split_raw_dataset(
     val_ratio: float = 0.2,
     seed: int = 42,
     move: bool = False,
-    verbose: bool = False,
+    verbose: bool = True,
 ):
     source_path = Path(source_dir)
     if source_path.is_dir() and source_path.name == "dogs_vs_cats" and (source_path / "train").exists():
@@ -114,8 +116,8 @@ def split_raw_dataset(
     else:
         output_dir = Path(output_dir)
 
-    if train_ratio <= 0 or val_ratio < 0 or train_ratio + val_ratio >= 1.0:
-        raise ValueError("train_ratio and val_ratio must satisfy 0 < train_ratio < 1 and train_ratio + val_ratio < 1")
+    if train_ratio <= 0 or val_ratio < 0 or train_ratio + val_ratio > 1.0:
+        raise ValueError("train_ratio and val_ratio must satisfy 0 < train_ratio < 1 and train_ratio + val_ratio <= 1")
 
     files_by_label = group_files_by_label(source_path)
     if not files_by_label["cat"] and not files_by_label["dog"]:
@@ -304,7 +306,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--action",
         choices=["split", "sanity"],
-        default="sanity",
+        default="split",
         help="Split raw files or print dataset loader stats.",
     )
     parser.add_argument(
@@ -316,7 +318,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--source-dir",
         type=str,
-        default=None,
+        default=_project_root().parent / "dataset" / "dogs_vs_cats" / "train",
         help="Source directory containing raw files for splitting.",
     )
     parser.add_argument(
@@ -326,7 +328,7 @@ if __name__ == "__main__":
         help="Output split directory.",
     )
     parser.add_argument("--train-ratio", type=float, default=0.8, help="Training split ratio.")
-    parser.add_argument("--val-ratio", type=float, default=0.1, help="Validation split ratio.")
+    parser.add_argument("--val-ratio", type=float, default=0.2, help="Validation split ratio.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for splits.")
     parser.add_argument("--move", action="store_true", help="Move raw files instead of copying.")
     parser.add_argument("--verbose", action="store_true", help="Verbose output.")
