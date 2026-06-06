@@ -75,12 +75,12 @@ def split_files(file_paths, train_ratio, val_ratio, seed):
     val_end = train_end + int(total * val_ratio)
     train_files = file_paths[:train_end]
     val_files = file_paths[train_end:val_end]
-    test_files = file_paths[val_end:] if val_end < total else None
+    test_files = file_paths[val_end:] if val_end < total else []
     return train_files, val_files, test_files
 
 
 def copy_or_move_files(file_paths, target_dir: Path, move=False, verbose=False):
-    if file_paths is None:
+    if file_paths is []:
         return
     target_dir.mkdir(parents=True, exist_ok=True)
     for source_path in file_paths:
@@ -334,7 +334,7 @@ if __name__ == "__main__":
     parser.add_argument("--val-ratio", type=float, default=0.2, help="Validation split ratio.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for splits.")
     parser.add_argument("--move", action="store_true", help="Move raw files instead of copying.")
-    parser.add_argument("--verbose", type=bool, default=True, help="Verbose output.")
+    parser.add_argument("--verbose", action="store_true", help="Verbose output.")
     args = parser.parse_args()
 
     if args.action == "split":
