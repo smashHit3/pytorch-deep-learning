@@ -102,7 +102,7 @@ def split_raw_dataset(
     val_ratio: float = 0.2,
     seed: int = 42,
     move: bool = False,
-    verbose: bool = True,
+    verbose: bool = False,
 ):
     source_path = Path(source_dir)
     if source_path.is_dir() and source_path.name == "dogs_vs_cats" and (source_path / "train").exists():
@@ -334,7 +334,7 @@ if __name__ == "__main__":
     parser.add_argument("--val-ratio", type=float, default=0.2, help="Validation split ratio.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for splits.")
     parser.add_argument("--move", action="store_true", help="Move raw files instead of copying.")
-    parser.add_argument("--verbose", action="store_true", help="Verbose output.")
+    parser.add_argument("--verbose", type=bool, default=True, help="Verbose output.")
     args = parser.parse_args()
 
     if args.action == "split":
