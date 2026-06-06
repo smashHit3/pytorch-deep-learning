@@ -80,6 +80,8 @@ def split_files(file_paths, train_ratio, val_ratio, seed):
 
 
 def copy_or_move_files(file_paths, target_dir: Path, move=False, verbose=False):
+    if len(file_paths) == 0:
+        return
     target_dir.mkdir(parents=True, exist_ok=True)
     for source_path in file_paths:
         destination = target_dir / source_path.name
@@ -109,13 +111,16 @@ def split_raw_dataset(
     if not source_path.exists() or not source_path.is_dir():
         raise FileNotFoundError(f"Source directory not found: {source_path}")
 
+    if train_ratio <= 0 or val_ratio < 0 or train_ratio + val_ratio > 1.0:
+        raise ValueError("train_ratio and val_ratio must satisfy 0 < train_ratio < 1 and train_ratio + val_ratio <= 1")
+
     if output_dir is None:
         output_dir = source_path.parent / "split"
     else:
         output_dir = Path(output_dir)
 
-    if train_ratio <= 0 or val_ratio < 0 or train_ratio + val_ratio >= 1.0:
-        raise ValueError("train_ratio and val_ratio must satisfy 0 < train_ratio < 1 and train_ratio + val_ratio < 1")
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
 
     files_by_label = group_files_by_label(source_path)
     if not files_by_label["cat"] and not files_by_label["dog"]:
@@ -139,7 +144,10 @@ def split_raw_dataset(
             print(f"  sample val:   {[p.name for p in val_files[:3]]}")
             print(f"  sample test:  {[p.name for p in test_files[:3]]}")
 
-    print(f"Split completed. Train: {train_dir}, Val: {val_dir}, Test: {test_dir}")
+    if test_dir.exists():
+        print(f"Split completed. Train: {train_dir}, Val: {val_dir}, Test: {test_dir}")
+    else:
+        print(f"Split completed. Train: {train_dir}, Val: {val_dir}. No test set created.")
     return train_dir, val_dir, test_dir
 
 
@@ -156,6 +164,7 @@ def get_data_loaders(
     test_transform: Optional[transforms.Compose] = None,
     verbose: bool = True,
 ) -> Tuple[DataLoader, DataLoader, Optional[DataLoader]]:
+    print(f"Preparing data loaders with data_root={data_root}")
     dataset_dir = _resolve_dataset_dir(data_root)
     split_dir = dataset_dir / "split"
     default_train_tf, default_val_tf = default_transforms()
@@ -250,8 +259,8 @@ class CatDogDataset(Dataset):
             T.ToTensor(),
         ])
 
-        if self.train_ratio <= 0 or self.val_ratio < 0 or self.train_ratio + self.val_ratio >= 1.0:
-            raise ValueError("train_ratio and val_ratio must satisfy 0 < train_ratio < 1 and train_ratio + val_ratio < 1")
+        if self.train_ratio <= 0 or self.val_ratio < 0 or self.train_ratio + self.val_ratio > 1.0:
+            raise ValueError("train_ratio and val_ratio must satisfy 0 < train_ratio < 1 and train_ratio + val_ratio <= 1")
 
         files = [p for p in sorted(self.data_dir.iterdir()) if p.is_file() and p.suffix.lower() in VALID_EXT]
         labeled: List[Tuple[Path, int]] = []
@@ -304,7 +313,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--action",
         choices=["split", "sanity"],
-        default="sanity",
+        default="split",
         help="Split raw files or print dataset loader stats.",
     )
     parser.add_argument(
@@ -316,7 +325,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--source-dir",
         type=str,
-        default=None,
+        default=_project_root().parent / "dataset" / "dogs_vs_cats" / "train",
         help="Source directory containing raw files for splitting.",
     )
     parser.add_argument(
@@ -326,7 +335,7 @@ if __name__ == "__main__":
         help="Output split directory.",
     )
     parser.add_argument("--train-ratio", type=float, default=0.8, help="Training split ratio.")
-    parser.add_argument("--val-ratio", type=float, default=0.1, help="Validation split ratio.")
+    parser.add_argument("--val-ratio", type=float, default=0.2, help="Validation split ratio.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for splits.")
     parser.add_argument("--move", action="store_true", help="Move raw files instead of copying.")
     parser.add_argument("--verbose", action="store_true", help="Verbose output.")
