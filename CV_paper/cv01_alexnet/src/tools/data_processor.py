@@ -111,13 +111,16 @@ def split_raw_dataset(
     if not source_path.exists() or not source_path.is_dir():
         raise FileNotFoundError(f"Source directory not found: {source_path}")
 
+    if train_ratio <= 0 or val_ratio < 0 or train_ratio + val_ratio > 1.0:
+        raise ValueError("train_ratio and val_ratio must satisfy 0 < train_ratio < 1 and train_ratio + val_ratio <= 1")
+
     if output_dir is None:
         output_dir = source_path.parent / "split"
     else:
         output_dir = Path(output_dir)
 
-    if train_ratio <= 0 or val_ratio < 0 or train_ratio + val_ratio > 1.0:
-        raise ValueError("train_ratio and val_ratio must satisfy 0 < train_ratio < 1 and train_ratio + val_ratio <= 1")
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
 
     files_by_label = group_files_by_label(source_path)
     if not files_by_label["cat"] and not files_by_label["dog"]:
