@@ -12,7 +12,7 @@ from tools.data_processor import get_data_loaders
 def parse_args():
     parser = ArgumentParser(description="Train a VGG model on the Dogs vs Cats dataset")
     parser.add_argument("--data-root", type=Path, default=Path(__file__).resolve().parents[2] / "dataset", help="Root directory of the dataset")
-    paserr.add_argument("--batch-size", type=int, default=64, help="Batch size for training and validation")
+    parser.add_argument("--batch-size", type=int, default=64, help="Batch size for training and validation")
     parser.add_argument("--num-workers", type=int, default=4, help="Number of worker threads for data loading")
     parser.add_argument("--no-cuda", action="store_true", help="Disable CUDA training")
     parser.add_argument("--no-pin-memory", action="store_true", help="Disable pin memory for data loading")
