@@ -1,3 +1,12 @@
+import sys
+from pathlib import Path
+
+CURR_FILE = Path(__file__).resolve()
+PROJECT_ROOT = CURR_FILE.parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.append(str(PROJECT_ROOT))
+
+
 from argparse import ArgumentParser
 from pathlib import Path
 import time
@@ -6,7 +15,7 @@ import torch
 from PIL import Image
 from torchvision import transforms
 
-from models.alexnet import AlexNet
+from cv_sources.models.alexnet import AlexNet
 
 CLASS_NAMES = ["cat", "dog"]
 

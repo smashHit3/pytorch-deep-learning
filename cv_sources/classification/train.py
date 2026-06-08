@@ -1,13 +1,24 @@
+import sys
 from pathlib import Path
-from data_processor.fashion_mnist import load_data_fashion_mnist
-from data_processor.dogs_vs_cats import load_data_dogs_vs_cats
+
+CURR_FILE = Path(__file__).resolve()
+PROJECT_ROOT = CURR_FILE.parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.append(str(PROJECT_ROOT))
+
+
+from cv_sources.data_processor.fashion_mnist import load_data_fashion_mnist
+from cv_sources.data_processor.dogs_vs_cats import load_data_dogs_vs_cats
 from argparse import ArgumentParser
-from models.googlenet import GoogleNet
+from cv_sources.models.googlenet import GoogleNet
 import torch
 
 
 def parse_args():
     parser = ArgumentParser(description="Train a specified model on the specified dataset")
+    parser.add_argument("--model-type", type=str, default="alexnet", 
+                        choices=["alexnet", "vgg11", "vgg13", "vgg16", "vgg19", "googlenet"], 
+                        help="Model type for selecting to train which model.")
     parser.add_argument("--batch-size", type=int, default=64, help="Batch size for training and validation")
     parser.add_argument("--num-workers", type=int, default=4, help="Number of worker threads for data loading")
     parser.add_argument("--no-cuda", action="store_true", help="Disable CUDA training")
@@ -68,7 +79,8 @@ def validate(model, device, val_loader, criterion):
     return epoch_loss, epoch_acc
 
 
-def train_googlenet(model, train_loader, val_loader):
+def train_googlenet(model: torch.nn.Module, device: torch.device, 
+                    train_loader: torch.utils.data.DataLoader, val_loader: torch.utils.data.DataLoader):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     criterion = torch.nn.CrossEntropyLoss()
@@ -82,7 +94,7 @@ def train_googlenet(model, train_loader, val_loader):
               f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")
 
 
-def load_dataset(dataset_path, batch_size):
+def load_dataset(dataset_path: Path, batch_size: int):
     train_loader, val_loader = load_data_fashion_mnist(batch_size, resize=224)
     return train_loader, val_loader, None
 
@@ -92,7 +104,7 @@ def load_model():
     return model
 
 
-def save_model(model, save_path):
+def save_model(model: torch.nn.Module, save_path: Path):
     save_path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(model.state_dict(), save_path)
     print(f"Saved GoogleNet weights to {save_path}")
@@ -100,9 +112,10 @@ def save_model(model, save_path):
 
 def main():
     args = parse_args()
+    device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
     train_loader, val_loader, _ = load_dataset("./", args.batch_size)
     model = load_model()
-    train_googlenet(model, train_loader, val_loader)
+    train_googlenet(model, device, train_loader, val_loader)
     save_model(model, args.save_path)
 
 

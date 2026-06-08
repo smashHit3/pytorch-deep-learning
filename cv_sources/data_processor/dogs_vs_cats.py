@@ -23,7 +23,7 @@ VALID_EXT = {".jpg", ".jpeg", ".png", ".bmp", ".gif"}
 
 
 def _project_root() -> Path:
-    return Path(__file__).resolve().parents[2]
+    return Path(__file__).resolve().parents[1]
 
 
 def _resolve_dataset_dir(data_root: Optional[Union[str, Path]] = None) -> Path:
@@ -198,7 +198,7 @@ def load_data_dogs_vs_cats(
         if verbose:
             print(f"Using CatDogDataset on raw files in {raw_train}")
 
-        train_ds = CatDogDataset(
+        train_ds = DogsVsCatsDataset(
             data_dir=str(raw_train),
             mode="train",
             train_ratio=train_ratio,
@@ -206,7 +206,7 @@ def load_data_dogs_vs_cats(
             random_seed=seed,
             transform=train_tf,
         )
-        val_ds = CatDogDataset(
+        val_ds = DogsVsCatsDataset(
             data_dir=str(raw_train),
             mode="val",
             train_ratio=train_ratio,
@@ -214,7 +214,7 @@ def load_data_dogs_vs_cats(
             random_seed=seed,
             transform=val_tf,
         )
-        test_ds = CatDogDataset(
+        test_ds = DogsVsCatsDataset(
             data_dir=str(raw_train),
             mode="test",
             train_ratio=train_ratio,
@@ -234,7 +234,7 @@ def load_data_dogs_vs_cats(
     raise FileNotFoundError(f"No usable dataset found under {dataset_dir}")
 
 
-class CatDogDataset(Dataset):
+class DogsVsCatsDataset(Dataset):
     def __init__(
         self,
         data_dir: str,
