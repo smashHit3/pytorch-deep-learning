@@ -1,11 +1,22 @@
+# -----------------------------------------------------------------------------
+# Purpose: Add the project root directory to Python's system path (sys.path)
+# 
+# This solves the "ModuleNotFoundError" when importing custom modules from other 
+# directories in your project (e.g., data_processor/fashion_mnist.py, models/googlenet.py).
+# 
+# Python only searches for modules in directories listed in `sys.path` by default.
+# By adding the project root to `sys.path`, we enable absolute imports from any script
+# in the project, regardless of where the script is executed from.
+# -----------------------------------------------------------------------------
 import sys
 from pathlib import Path
 
-CURR_FILE = Path(__file__).resolve()
-PROJECT_ROOT = CURR_FILE.parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
-
+# -----------------------------------------------------------------------------
+# Now you can import custom modules using absolute paths from the project root
+# -----------------------------------------------------------------------------
 
 from cv_sources.data_processor.fashion_mnist import load_data_fashion_mnist
 from cv_sources.data_processor.dogs_vs_cats import load_data_dogs_vs_cats
