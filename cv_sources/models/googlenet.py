@@ -1,6 +1,8 @@
 import torch
 from torch import nn
 
+MODEL_TYPE_GOOGLENET = "googlenet"
+
 class Inception(nn.Module):
     def __init__(self, in_channels, out_1x1, out_3x3_reduce, out_3x3, out_5x5_reduce, out_5x5, out_pool_proj):
         super(Inception, self).__init__()

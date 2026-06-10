@@ -7,6 +7,11 @@ VGG implementation
 import torch
 from torch import nn
 
+MODEL_TYPE_VGG11 = "vgg11"
+MODEL_TYPE_VGG13 = "vgg13"
+MODEL_TYPE_VGG16 = "vgg16"
+MODEL_TYPE_VGG19 = "vgg19"
+
 class VGG(nn.Module):
     def __init__(self, features, num_classes=1000, init_weights=False):
         super(VGG, self).__init__()

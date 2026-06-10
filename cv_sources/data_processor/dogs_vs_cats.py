@@ -20,6 +20,8 @@ import torchvision.transforms as T
 
 
 VALID_EXT = {".jpg", ".jpeg", ".png", ".bmp", ".gif"}
+DATASET_NAME_DOGS_VS_CATS = "dogs_vs_cats"
+NUM_CLASSES = 2
 
 
 def _project_root() -> Path:
@@ -34,17 +36,17 @@ def _resolve_dataset_dir(data_root: Optional[Union[str, Path]] = None) -> Path:
     return data_root if data_root.name == "dogs_vs_cats" else data_root / "dogs_vs_cats"
 
 
-def default_transforms():
+def default_transforms(resize: int=224):
     train_tf = transforms.Compose([
         transforms.Resize((256, 256)),
-        transforms.RandomCrop(224),
+        transforms.RandomCrop(resize),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
     ])
     val_tf = transforms.Compose([
         transforms.Resize((256, 256)),
-        transforms.CenterCrop(224),
+        transforms.CenterCrop(resize),
         transforms.ToTensor(),
         transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
     ])
@@ -154,6 +156,7 @@ def split_raw_dataset(
 def load_data_dogs_vs_cats(
     data_root: Optional[Union[str, Path]] = None,
     batch_size: int = 32,
+    resize: int = 224,
     num_workers: int = 4,
     pin_memory: bool = True,
     train_ratio: float = 0.8,
@@ -166,7 +169,7 @@ def load_data_dogs_vs_cats(
 ) -> Tuple[DataLoader, DataLoader, Optional[DataLoader]]:
     dataset_dir = _resolve_dataset_dir(data_root)
     split_dir = dataset_dir / "split"
-    default_train_tf, default_val_tf = default_transforms()
+    default_train_tf, default_val_tf = default_transforms(resize)
 
     train_tf = train_transform or default_train_tf
     val_tf = val_transform or default_val_tf

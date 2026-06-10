@@ -7,6 +7,8 @@ AlexNet implementation
 import torch
 import torch.nn as nn
 
+MODEL_TYPE_ALEXNET = "alexnet"
+
 class AlexNet(nn.Module):
     def __init__(self, num_classes : int = 1000, dropout : float = 0.5) -> None:
         super().__init__()

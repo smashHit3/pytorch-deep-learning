@@ -3,6 +3,9 @@ from torchvision import transforms
 from torch.utils import data
 from pathlib import Path
 
+DATASET_NAME_FASHION_MNIST = "fashion_mnist"
+NUM_CLASSES = 10
+
 
 def _project_root() -> Path:
     return Path(__file__).resolve().parents[1]
