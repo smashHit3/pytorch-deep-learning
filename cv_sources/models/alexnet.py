@@ -10,7 +10,7 @@ import torch.nn as nn
 MODEL_TYPE_ALEXNET = "alexnet"
 
 class AlexNet(nn.Module):
-    def __init__(self, num_classes : int = 1000, dropout : float = 0.5) -> None:
+    def __init__(self, num_classes : int = 1000, dropout : float = 0.5, init_weights=False) -> None:
         super().__init__()
         self.feasures = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=11, stride=4, padding=2), # 卷积层1
@@ -37,6 +37,8 @@ class AlexNet(nn.Module):
             nn.ReLU(inplace=True), # 激活函数7
             nn.Linear(4096, num_classes), # 全连接
         )
+        if init_weights:
+            self._initialize_weights()
 
     def forward(self, x : torch.Tensor) -> torch.Tensor:
         x = self.feasures(x) # 通过卷积层提取特征
@@ -44,3 +46,13 @@ class AlexNet(nn.Module):
         x = torch.flatten(x, 1) # 将特征图展平为向量
         x = self.classifier(x) # 通过全连接层进行分类
         return x
+    
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                nn.init.normal_(m.weight, 0, 0.01)
+                nn.init.constant_(m.bias, 0)

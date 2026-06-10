@@ -12,7 +12,8 @@ def _project_root() -> Path:
 
 
 def load_data_fashion_mnist(batch_size: int, resize: int=None):
-    trans = [transforms.ToTensor()]
+    trans = [transforms.Grayscale(num_output_channels=3), 
+             transforms.ToTensor()]
     if resize:
         trans.insert(0, transforms.Resize(resize))
     print(f"dataset path: {_project_root() / 'dataset'}")
