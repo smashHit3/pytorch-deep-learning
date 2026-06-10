@@ -211,14 +211,20 @@ def load_data_dogs_vs_cats(
 
         train_ds = datasets.ImageFolder(str(split_dir / "train"), transform=train_tf)
         val_ds = datasets.ImageFolder(str(split_dir / "val"), transform=val_tf)
-        test_ds = datasets.ImageFolder(str(split_dir / "test"), transform=test_tf)
 
         train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=pin_memory)
         val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=pin_memory)
-        test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=pin_memory)
+        test_loader = None
+        test_dir = split_dir / "test"
+        if test_dir.exists():
+            test_ds = datasets.ImageFolder(str(test_dir), transform=test_tf)
+            test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=pin_memory)
 
         if verbose:
-            print(f"Train samples: {len(train_ds)}, Val samples: {len(val_ds)}, Test samples: {len(test_ds)}")
+            if test_loader is not None:
+                print(f"Train samples: {len(train_ds)}, Val samples: {len(val_ds)}, Test samples: {len(test_ds)}")
+            else:
+                print(f"Train samples: {len(train_ds)}, Val samples: {len(val_ds)}")
         return train_loader, val_loader, test_loader
 
     raise FileNotFoundError(f"No usable dataset found under {dataset_dir}")

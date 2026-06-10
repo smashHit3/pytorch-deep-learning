@@ -124,7 +124,7 @@ def load_dataset(dataset_name: Path, batch_size: int, resize: int=224):
 
 def load_model(model_type: str, num_classes: int):
     if model_type == alexnet.MODEL_TYPE_ALEXNET:
-        model = alexnet.AlexNet(num_classes=num_classes)
+        model = alexnet.AlexNet(num_classes=num_classes, init_weights=True)
     elif model_type == vgg.MODEL_TYPE_VGG11:
         model = vgg.vgg11(num_classes=num_classes, init_weights=True)
     elif model_type == vgg.MODEL_TYPE_VGG13:
