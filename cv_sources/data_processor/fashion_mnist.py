@@ -16,7 +16,7 @@ def load_data_fashion_mnist(batch_size: int, resize: int=None):
              transforms.ToTensor()]
     if resize:
         trans.insert(0, transforms.Resize(resize))
-    print(f"dataset path: {_project_root() / 'dataset'}")
+
     trans = transforms.Compose(trans)
     mnist_train = torchvision.datasets.FashionMNIST(
         root=_project_root() / "dataset", train=True, transform=trans, download=True)

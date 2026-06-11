@@ -30,7 +30,7 @@ MODEL_FILE_MAP = {
     googlenet.MODEL_TYPE_GOOGLENET: "googlenet.pth"
 }
 # Original default save path (for judgment)
-ORIG_DEFAULT_SAVE_PATH = PROJECT_ROOT / "results" / "model.pth"
+ORIG_DEFAULT_SAVE_PATH = PROJECT_ROOT / "results" / "default_model.pth"
 
 
 def parse_args():
