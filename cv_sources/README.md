@@ -18,7 +18,8 @@ cv_sources/
 │   ├── vgg.py            # VGG-11/13/16/19
 │   ├── resnet.py         # ResNet-18/34/50
 │   ├── googlenet.py      # GoogLeNet (Inception)
-│   └── densenet.py       # DenseNet-121/169/201
+│   ├── densenet.py       # DenseNet-121/169/201
+│   └── mobilenet.py      # MobileNet (depthwise separable conv)
 └── results/              # Trained model weights (auto-generated)
 ```
 
@@ -31,6 +32,7 @@ cv_sources/
 | **ResNet** | resnet18, resnet34, resnet50 | Skip connections (residual learning) |
 | **GoogLeNet** | googlenet | Inception modules (multi-scale features) |
 | **DenseNet** | densenet121, densenet169, densenet201 | Dense connectivity |
+| **MobileNet** | mobilenet | Depthwise separable convolutions (efficient) |
 
 ## Supported Datasets
 
@@ -125,3 +127,4 @@ python app.py
 | ResNet | 0.001 | SGD | 1e-4 |
 | GoogLeNet | 0.001 | Adam | 5e-4 |
 | DenseNet | 0.001 | SGD | 1e-4 |
+| MobileNet | 0.001 | SGD | 1e-4 |
