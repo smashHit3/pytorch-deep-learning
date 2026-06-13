@@ -17,7 +17,7 @@ from argparse import ArgumentParser
 
 # Import custom modules
 from cv_sources.data_processor import fashion_mnist, dogs_vs_cats
-from cv_sources.models import alexnet, googlenet, vgg
+from cv_sources.models import alexnet, googlenet, vgg, resnet
 
 # ---------------- Global Constant: Model -> Save Filename Mapping ----------------
 # Match model type to weight file name for auto path update
@@ -27,7 +27,10 @@ MODEL_FILE_MAP = {
     vgg.MODEL_TYPE_VGG13: "vgg13.pth",
     vgg.MODEL_TYPE_VGG16: "vgg16.pth",
     vgg.MODEL_TYPE_VGG19: "vgg19.pth",
-    googlenet.MODEL_TYPE_GOOGLENET: "googlenet.pth"
+    googlenet.MODEL_TYPE_GOOGLENET: "googlenet.pth",
+    resnet.MODEL_TYPE_RESNET18: "resnet18.pth",
+    resnet.MODEL_TYPE_RESNET34: "resnet34.pth",
+    resnet.MODEL_TYPE_RESNET50: "resnet50.pth"
 }
 # Original default save path (for judgment)
 ORIG_DEFAULT_SAVE_PATH = PROJECT_ROOT / "results" / "default_model.pth"
@@ -57,7 +60,8 @@ def parse_args():
     parser.add_argument("--model", type=str, default=alexnet.MODEL_TYPE_ALEXNET,
                         choices=[alexnet.MODEL_TYPE_ALEXNET, googlenet.MODEL_TYPE_GOOGLENET,
                                  vgg.MODEL_TYPE_VGG11, vgg.MODEL_TYPE_VGG13,
-                                 vgg.MODEL_TYPE_VGG16, vgg.MODEL_TYPE_VGG19],
+                                 vgg.MODEL_TYPE_VGG16, vgg.MODEL_TYPE_VGG19,
+                                 resnet.MODEL_TYPE_RESNET18, resnet.MODEL_TYPE_RESNET34, resnet.MODEL_TYPE_RESNET50],
                         help="Select CNN model (AlexNet as default)")
     parser.add_argument("--init-weights", action="store_true", default=True,
                         help="Initialize model weights")
@@ -173,7 +177,10 @@ def build_model(model_type: str, num_classes: int, init_weights: bool):
         vgg.MODEL_TYPE_VGG11: lambda: vgg.vgg11(num_classes=num_classes, init_weights=init_weights),
         vgg.MODEL_TYPE_VGG13: lambda: vgg.vgg13(num_classes=num_classes, init_weights=init_weights),
         vgg.MODEL_TYPE_VGG16: lambda: vgg.vgg16(num_classes=num_classes, init_weights=init_weights),
-        vgg.MODEL_TYPE_VGG19: lambda: vgg.vgg19(num_classes=num_classes, init_weights=init_weights)
+        vgg.MODEL_TYPE_VGG19: lambda: vgg.vgg19(num_classes=num_classes, init_weights=init_weights),
+        resnet.MODEL_TYPE_RESNET18: lambda: resnet.ResNet18(num_classes=num_classes, init_weights=init_weights),
+        resnet.MODEL_TYPE_RESNET34: lambda: resnet.ResNet34(num_classes=num_classes, init_weights=init_weights),
+        resnet.MODEL_TYPE_RESNET50: lambda: resnet.ResNet50(num_classes=num_classes, init_weights=init_weights)
     }
     return model_map[model_type]()
 

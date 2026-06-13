@@ -18,6 +18,7 @@ if str(PROJECT_ROOT.parent) not in sys.path:
 from cv_sources.models.alexnet import AlexNet
 from cv_sources.models.vgg import vgg11, vgg13, vgg16, vgg19
 from cv_sources.models.googlenet import GoogleNet
+from cv_sources.models.resnet import ResNet18, ResNet34, ResNet50
 
 # -------------------------- Global Config (Aligned with Training Script) --------------------------
 # Default ImageNet normalization params
@@ -38,7 +39,10 @@ MODEL_FACTORY = {
     "vgg13": vgg13,
     "vgg16": vgg16,
     "vgg19": vgg19,
-    "googlenet": GoogleNet
+    "googlenet": GoogleNet,
+    "resnet18": ResNet18,
+    "resnet34": ResNet34,
+    "resnet50": ResNet50
 }
 
 # 2. Model -> Default Weight File Name (SAME as training script)
@@ -48,7 +52,10 @@ MODEL_WEIGHT_MAP = {
     "vgg13": "vgg13.pth",
     "vgg16": "vgg16.pth",
     "vgg19": "vgg19.pth",
-    "googlenet": "googlenet.pth"
+    "googlenet": "googlenet.pth",
+    "resnet18": "resnet18.pth",
+    "resnet34": "resnet34.pth",
+    "resnet50": "resnet50.pth"
 }
 
 # 3. Record original default weight path (for judgment)
