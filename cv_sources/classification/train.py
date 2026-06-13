@@ -77,9 +77,9 @@ def parse_args():
                         help="Total training epochs")
     parser.add_argument("--lr", type=float, default=None,
                         help="Initial learning rate (Auto set based on model)")
-    parser.add_argument("--optimizer", type=str, default="sgd",
+    parser.add_argument("--optimizer", type=str, default=None,
                         choices=["adam", "sgd"],
-                        help="Optimizer type (AlexNet official: SGD)")
+                        help="Optimizer type (GoogLeNet: Adam, others: SGD)")
     parser.add_argument("--momentum", type=float, default=None,
                         help="Momentum for SGD (Auto set for AlexNet: 0.9)")
     parser.add_argument("--weight-decay", type=float, default=None,
@@ -88,10 +88,12 @@ def parse_args():
     # ---------------------- Learning Rate Scheduler ----------------------
     parser.add_argument("--use-scheduler", action="store_true", default=True,
                         help="Enable StepLR learning rate scheduler")
-    parser.add_argument("--lr-step", type=int, default=5,
-                        help="Step interval for LR decay")
-    parser.add_argument("--lr-gamma", type=float, default=0.1,
-                        help="LR decay factor (multiply lr by gamma every lr-step epochs)")
+    parser.add_argument("--no-scheduler", dest="use_scheduler", action="store_false",
+                        help="Disable learning rate scheduler")
+    parser.add_argument("--lr-step", type=int, default=None,
+                        help="Step interval for LR decay (Auto set: 5)")
+    parser.add_argument("--lr-gamma", type=float, default=None,
+                        help="LR decay factor (Auto set: 0.1)")
 
     # ---------------------- Runtime & Save Config ----------------------
     parser.add_argument("--seed", type=int, default=42,
@@ -125,26 +127,26 @@ def auto_set_model_hyperparams(args):
     """
     Auto apply hyperparameters based on the selected model.
     If user does NOT manually set params, overwrite with model-specific standard values.
+    Format: { model_type: (lr, momentum, weight_decay, preferred_optimizer, lr_step, lr_gamma) }
     """
-    # Define model-specific defaults: (lr, momentum, weight_decay)
     model_defaults = {
-        alexnet.MODEL_TYPE_ALEXNET: (0.01, 0.9, 5e-4),
-        googlenet.MODEL_TYPE_GOOGLENET: (0.01, 0.9, 5e-4),
-        vgg.MODEL_TYPE_VGG11: (0.01, 0.9, 5e-4),
-        vgg.MODEL_TYPE_VGG13: (0.01, 0.9, 5e-4),
-        vgg.MODEL_TYPE_VGG16: (0.01, 0.9, 5e-4),
-        vgg.MODEL_TYPE_VGG19: (0.01, 0.9, 5e-4),
-        resnet.MODEL_TYPE_RESNET18: (0.01, 0.9, 1e-4),
-        resnet.MODEL_TYPE_RESNET34: (0.01, 0.9, 1e-4),
-        resnet.MODEL_TYPE_RESNET50: (0.01, 0.9, 1e-4),
-        densenet.MODEL_TYPE_DENSENET121: (0.01, 0.9, 1e-4),
-        densenet.MODEL_TYPE_DENSENET169: (0.01, 0.9, 1e-4),
-        densenet.MODEL_TYPE_DENSENET201: (0.01, 0.9, 1e-4),
+        alexnet.MODEL_TYPE_ALEXNET: (0.01, 0.9, 5e-4, "sgd", 5, 0.1),
+        googlenet.MODEL_TYPE_GOOGLENET: (0.001, 0.9, 5e-4, "adam", 5, 0.1),
+        vgg.MODEL_TYPE_VGG11: (0.0001, 0.9, 5e-4, "adam", 5, 0.1),
+        vgg.MODEL_TYPE_VGG13: (0.0001, 0.9, 5e-4, "adam", 5, 0.1),
+        vgg.MODEL_TYPE_VGG16: (0.0001, 0.9, 5e-4, "adam", 5, 0.1),
+        vgg.MODEL_TYPE_VGG19: (0.0001, 0.9, 5e-4, "adam", 5, 0.1),
+        resnet.MODEL_TYPE_RESNET18: (0.001, 0.9, 1e-4, "sgd", 7, 0.1),
+        resnet.MODEL_TYPE_RESNET34: (0.001, 0.9, 1e-4, "sgd", 7, 0.1),
+        resnet.MODEL_TYPE_RESNET50: (0.001, 0.9, 1e-4, "sgd", 7, 0.1),
+        densenet.MODEL_TYPE_DENSENET121: (0.001, 0.9, 1e-4, "sgd", 7, 0.1),
+        densenet.MODEL_TYPE_DENSENET169: (0.001, 0.9, 1e-4, "sgd", 7, 0.1),
+        densenet.MODEL_TYPE_DENSENET201: (0.001, 0.9, 1e-4, "sgd", 7, 0.1),
     }
 
     # Get defaults for the current model, or use a general fallback
-    default_lr, default_momentum, default_wd = model_defaults.get(
-        args.model, (0.001, 0.9, 0.0)
+    default_lr, default_momentum, default_wd, default_opt, default_step, default_gamma = model_defaults.get(
+        args.model, (0.001, 0.9, 0.0, "adam", 5, 0.1)
     )
 
     if args.lr is None:
@@ -153,6 +155,16 @@ def auto_set_model_hyperparams(args):
         args.momentum = default_momentum
     if args.weight_decay is None:
         args.weight_decay = default_wd
+
+    # Set default optimizer based on model
+    if args.optimizer is None:
+        args.optimizer = default_opt
+
+    # Set default scheduler params based on model
+    if args.lr_step is None:
+        args.lr_step = default_step
+    if args.lr_gamma is None:
+        args.lr_gamma = default_gamma
 
 
 def set_random_seed(seed: int):
