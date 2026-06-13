@@ -76,7 +76,7 @@ def parse_args():
     parser.add_argument("--epochs", type=int, default=10,
                         help="Total training epochs")
     parser.add_argument("--lr", type=float, default=None,
-                        help="Initial learning rate (Auto set for AlexNet: 0.01)")
+                        help="Initial learning rate (Auto set based on model)")
     parser.add_argument("--optimizer", type=str, default="sgd",
                         choices=["adam", "sgd"],
                         help="Optimizer type (AlexNet official: SGD)")
@@ -121,26 +121,38 @@ def auto_update_save_path(args):
         print(f"[Auto Update] Default save path changed to: {new_save_path.resolve()}")
 
 
-def auto_set_alexnet_hyperparams(args):
+def auto_set_model_hyperparams(args):
     """
-    Auto apply AlexNet official paper hyperparameters
-    If user does NOT manually set params, overwrite with AlexNet standard values
+    Auto apply hyperparameters based on the selected model.
+    If user does NOT manually set params, overwrite with model-specific standard values.
     """
-    if args.model == alexnet.MODEL_TYPE_ALEXNET:
-        if args.lr is None:
-            args.lr = 0.01
-        if args.momentum is None:
-            args.momentum = 0.9
-        if args.weight_decay is None:
-            args.weight_decay = 5e-4
-    # Set default for other models if missing
-    else:
-        if args.lr is None:
-            args.lr = 0.001
-        if args.momentum is None:
-            args.momentum = 0.9
-        if args.weight_decay is None:
-            args.weight_decay = 0.0
+    # Define model-specific defaults: (lr, momentum, weight_decay)
+    model_defaults = {
+        alexnet.MODEL_TYPE_ALEXNET: (0.01, 0.9, 5e-4),
+        googlenet.MODEL_TYPE_GOOGLENET: (0.01, 0.9, 5e-4),
+        vgg.MODEL_TYPE_VGG11: (0.01, 0.9, 5e-4),
+        vgg.MODEL_TYPE_VGG13: (0.01, 0.9, 5e-4),
+        vgg.MODEL_TYPE_VGG16: (0.01, 0.9, 5e-4),
+        vgg.MODEL_TYPE_VGG19: (0.01, 0.9, 5e-4),
+        resnet.MODEL_TYPE_RESNET18: (0.01, 0.9, 1e-4),
+        resnet.MODEL_TYPE_RESNET34: (0.01, 0.9, 1e-4),
+        resnet.MODEL_TYPE_RESNET50: (0.01, 0.9, 1e-4),
+        densenet.MODEL_TYPE_DENSENET121: (0.01, 0.9, 1e-4),
+        densenet.MODEL_TYPE_DENSENET169: (0.01, 0.9, 1e-4),
+        densenet.MODEL_TYPE_DENSENET201: (0.01, 0.9, 1e-4),
+    }
+
+    # Get defaults for the current model, or use a general fallback
+    default_lr, default_momentum, default_wd = model_defaults.get(
+        args.model, (0.001, 0.9, 0.0)
+    )
+
+    if args.lr is None:
+        args.lr = default_lr
+    if args.momentum is None:
+        args.momentum = default_momentum
+    if args.weight_decay is None:
+        args.weight_decay = default_wd
 
 
 def set_random_seed(seed: int):
@@ -284,8 +296,8 @@ def save_weights(model: nn.Module, save_path: Path):
 def main():
     args = parse_args()
 
-    # 1. Auto fill AlexNet official hyperparameters
-    auto_set_alexnet_hyperparams(args)
+    # 1. Auto fill model hyperparameters
+    auto_set_model_hyperparams(args)
     # 2. Auto update default save path according to selected model (CORE NEW LOGIC)
     auto_update_save_path(args)
 
