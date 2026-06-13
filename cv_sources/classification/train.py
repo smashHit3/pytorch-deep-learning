@@ -17,7 +17,7 @@ from argparse import ArgumentParser
 
 # Import custom modules
 from cv_sources.data_processor import fashion_mnist, dogs_vs_cats
-from cv_sources.models import alexnet, googlenet, vgg, resnet
+from cv_sources.models import alexnet, googlenet, vgg, resnet, densenet
 
 # ---------------- Global Constant: Model -> Save Filename Mapping ----------------
 # Match model type to weight file name for auto path update
@@ -30,7 +30,10 @@ MODEL_FILE_MAP = {
     googlenet.MODEL_TYPE_GOOGLENET: "googlenet.pth",
     resnet.MODEL_TYPE_RESNET18: "resnet18.pth",
     resnet.MODEL_TYPE_RESNET34: "resnet34.pth",
-    resnet.MODEL_TYPE_RESNET50: "resnet50.pth"
+    resnet.MODEL_TYPE_RESNET50: "resnet50.pth",
+    densenet.MODEL_TYPE_DENSENET121: "densenet121.pth",
+    densenet.MODEL_TYPE_DENSENET169: "densenet169.pth",
+    densenet.MODEL_TYPE_DENSENET201: "densenet201.pth"
 }
 # Original default save path (for judgment)
 ORIG_DEFAULT_SAVE_PATH = PROJECT_ROOT / "results" / "default_model.pth"
@@ -61,7 +64,8 @@ def parse_args():
                         choices=[alexnet.MODEL_TYPE_ALEXNET, googlenet.MODEL_TYPE_GOOGLENET,
                                  vgg.MODEL_TYPE_VGG11, vgg.MODEL_TYPE_VGG13,
                                  vgg.MODEL_TYPE_VGG16, vgg.MODEL_TYPE_VGG19,
-                                 resnet.MODEL_TYPE_RESNET18, resnet.MODEL_TYPE_RESNET34, resnet.MODEL_TYPE_RESNET50],
+                                 resnet.MODEL_TYPE_RESNET18, resnet.MODEL_TYPE_RESNET34, resnet.MODEL_TYPE_RESNET50,
+                                 densenet.MODEL_TYPE_DENSENET121, densenet.MODEL_TYPE_DENSENET169, densenet.MODEL_TYPE_DENSENET201],
                         help="Select CNN model (AlexNet as default)")
     parser.add_argument("--init-weights", action="store_true", default=True,
                         help="Initialize model weights")
@@ -180,7 +184,10 @@ def build_model(model_type: str, num_classes: int, init_weights: bool):
         vgg.MODEL_TYPE_VGG19: lambda: vgg.vgg19(num_classes=num_classes, init_weights=init_weights),
         resnet.MODEL_TYPE_RESNET18: lambda: resnet.ResNet18(num_classes=num_classes, init_weights=init_weights),
         resnet.MODEL_TYPE_RESNET34: lambda: resnet.ResNet34(num_classes=num_classes, init_weights=init_weights),
-        resnet.MODEL_TYPE_RESNET50: lambda: resnet.ResNet50(num_classes=num_classes, init_weights=init_weights)
+        resnet.MODEL_TYPE_RESNET50: lambda: resnet.ResNet50(num_classes=num_classes, init_weights=init_weights),
+        densenet.MODEL_TYPE_DENSENET121: lambda: densenet.DenseNet121(num_classes=num_classes, init_weights=init_weights),
+        densenet.MODEL_TYPE_DENSENET169: lambda: densenet.DenseNet169(num_classes=num_classes, init_weights=init_weights),
+        densenet.MODEL_TYPE_DENSENET201: lambda: densenet.DenseNet201(num_classes=num_classes, init_weights=init_weights)
     }
     return model_map[model_type]()
 
