@@ -1,7 +1,15 @@
+# -----------------------------------------------------------------------------
+# Add project root to system path
+# -----------------------------------------------------------------------------
 import sys
 import time
 from pathlib import Path
 from typing import List, Tuple
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT.parent) not in sys.path:
+    sys.path.append(str(PROJECT_ROOT.parent))
+# -----------------------------------------------------------------------------
 
 import torch
 import torch.nn.functional as F
@@ -9,16 +17,9 @@ from PIL import Image
 from torchvision import transforms
 from argparse import ArgumentParser
 
-# -------------------------- Project Path Configuration --------------------------
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT.parent) not in sys.path:
-    sys.path.append(str(PROJECT_ROOT.parent))
-
-# Import custom models
-from cv_sources.models.alexnet import AlexNet
-from cv_sources.models.vgg import vgg11, vgg13, vgg16, vgg19
-from cv_sources.models.googlenet import GoogleNet
-from cv_sources.models.resnet import ResNet18, ResNet34, ResNet50
+# Import custom modules
+from cv_sources.data_processor import fashion_mnist, dogs_vs_cats
+from cv_sources.classification.train import build_model, MODEL_FILE_MAP
 
 # -------------------------- Global Config (Aligned with Training Script) --------------------------
 # Default ImageNet normalization params
@@ -32,33 +33,16 @@ DEFAULT_CLASS_NAMES = ["cat", "dog"]
 # Default random seed
 DEFAULT_SEED = 42
 
-# 1. Model -> Model Class/Function mapping
-MODEL_FACTORY = {
-    "alexnet": AlexNet,
-    "vgg11": vgg11,
-    "vgg13": vgg13,
-    "vgg16": vgg16,
-    "vgg19": vgg19,
-    "googlenet": GoogleNet,
-    "resnet18": ResNet18,
-    "resnet34": ResNet34,
-    "resnet50": ResNet50
+# Labels for datasets
+LABELS = {
+    fashion_mnist.DATASET_NAME_FASHION_MNIST: [
+        "T-shirt/top", "Trouser", "Pullover", "Dress", "Coat",
+        "Sandal", "Shirt", "Sneaker", "Bag", "Ankle boot"
+    ],
+    dogs_vs_cats.DATASET_NAME_DOGS_VS_CATS: ["Cat", "Dog"]
 }
 
-# 2. Model -> Default Weight File Name (SAME as training script)
-MODEL_WEIGHT_MAP = {
-    "alexnet": "alexnet.pth",
-    "vgg11": "vgg11.pth",
-    "vgg13": "vgg13.pth",
-    "vgg16": "vgg16.pth",
-    "vgg19": "vgg19.pth",
-    "googlenet": "googlenet.pth",
-    "resnet18": "resnet18.pth",
-    "resnet34": "resnet34.pth",
-    "resnet50": "resnet50.pth"
-}
-
-# 3. Record original default weight path (for judgment)
+# 1. Record original default weight path (for judgment)
 ORIG_DEFAULT_WEIGHT_PATH = PROJECT_ROOT / "results" / "default_model.pth"
 
 
@@ -66,11 +50,11 @@ def auto_update_model_path(args) -> None:
     """
     Auto update default weight path by selected model
     Rule: Only modify when user uses the original default path
-          Manual --model-path will NOT be overwritten
+    Manual --model-path will NOT be overwritten
     """
     if args.model_path == ORIG_DEFAULT_WEIGHT_PATH:
-        # Get matched weight filename
-        weight_file = MODEL_WEIGHT_MAP.get(args.model, "model.pth")
+        # Get matched weight filename from MODEL_FILE_MAP in train.py
+        weight_file = MODEL_FILE_MAP.get(args.model, "model.pth")
         new_weight_path = PROJECT_ROOT / "results" / weight_file
         args.model_path = new_weight_path
         print(f"[Auto Update] Default weight path changed to: {new_weight_path.resolve()}")
@@ -104,15 +88,21 @@ def parse_args() -> object:
     # 1. Input Image Config
     parser.add_argument("--image", type=Path, required=True, help="Path to input image file")
 
-    # 2. Model Config
-    parser.add_argument("--model", type=str, default="alexnet", choices=list(MODEL_FACTORY.keys()),
-                        help="Select model: alexnet / vgg11 / vgg13 / vgg16 / vgg19 / googlenet")
+    # 2. Dataset Config (to auto-configure preprocessing)
+    parser.add_argument("--dataset", type=str, default=None,
+                        choices=[fashion_mnist.DATASET_NAME_FASHION_MNIST,
+                                 dogs_vs_cats.DATASET_NAME_DOGS_VS_CATS],
+                        help="Select dataset for automatic preprocessing config")
+
+    # 3. Model Config
+    parser.add_argument("--model", type=str, default="alexnet", choices=list(MODEL_FILE_MAP.keys()),
+                        help="Select model (must match MODEL_TYPE in train.py)")
     parser.add_argument("--model-path", type=Path,
                         default=ORIG_DEFAULT_WEIGHT_PATH,
                         help="Path to trained model weights (.pth)")
     parser.add_argument("--num-classes", type=int, default=2, help="Total number of classification categories")
 
-    # 3. Image Preprocessing Config
+    # 4. Image Preprocessing Config
     parser.add_argument("--resize", type=int, default=DEFAULT_RESIZE, help="Image resize size before center crop")
     parser.add_argument("--crop", type=int, default=DEFAULT_CROP, help="Final center crop size for model input")
     parser.add_argument("--mean", nargs=3, type=float, default=DEFAULT_MEAN,
@@ -120,13 +110,13 @@ def parse_args() -> object:
     parser.add_argument("--std", nargs=3, type=float, default=DEFAULT_STD,
                         help="Normalization std (R G B)")
 
-    # 4. Inference Config
+    # 5. Inference Config
     parser.add_argument("--top-k", type=int, default=2, help="Output top K prediction results")
-    parser.add_argument("--class-names", nargs="+", default=DEFAULT_CLASS_NAMES,
+    parser.add_argument("--class-names", nargs="+", default=None,
                         help="List of category names, e.g. --class-names cat dog")
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED, help="Random seed for reproducibility")
 
-    # 5. Device & Performance Config
+    # 6. Device & Performance Config
     parser.add_argument("--device", type=str, default="auto", choices=["auto", "cpu", "cuda"],
                         help="Running device: auto(auto select), cpu, cuda")
     parser.add_argument("--fp16", action="store_true", help="Enable FP16 half-precision (CUDA only, speed up inference)")
@@ -142,28 +132,46 @@ def get_device(device_opt: str) -> torch.device:
         if not torch.cuda.is_available():
             print("Warning: CUDA is not available, fallback to CPU")
             return torch.device("cpu")
-    # Auto mode
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def preprocess_image(
     img_path: Path,
-    resize_size: int,
-    crop_size: int,
-    mean: Tuple[float, float, float],
-    std: Tuple[float, float, float],
-    device: torch.device
+    dataset: str = None,
+    resize_size: int = DEFAULT_RESIZE,
+    crop_size: int = DEFAULT_CROP,
+    mean: Tuple[float, float, float] = DEFAULT_MEAN,
+    std: Tuple[float, float, float] = DEFAULT_STD,
+    device: torch.device = torch.device("cpu")
 ) -> torch.Tensor:
-    """Load and preprocess single image to model input tensor"""
-    transform = transforms.Compose([
-        transforms.Resize(resize_size),
-        transforms.CenterCrop(crop_size),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=mean, std=std)
-    ])
-
+    """Load and preprocess image based on dataset or manual params"""
     with Image.open(img_path) as img:
         img_rgb = img.convert("RGB")
+
+    if dataset == fashion_mnist.DATASET_NAME_FASHION_MNIST:
+        # Match fashion_mnist.py: Resize -> Grayscale(3) -> ToTensor
+        transform = transforms.Compose([
+            transforms.Resize((crop_size, crop_size)),
+            transforms.Grayscale(num_output_channels=3),
+            transforms.ToTensor(),
+        ])
+    elif dataset == dogs_vs_cats.DATASET_NAME_DOGS_VS_CATS:
+        # Match dogs_vs_cats.py val_tf: Resize(256) -> CenterCrop(crop_size) -> ToTensor -> Normalize
+        transform = transforms.Compose([
+            transforms.Resize((resize_size, resize_size)),
+            transforms.CenterCrop(crop_size),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=mean, std=std)
+        ])
+    else:
+        # Manual fallback
+        transform = transforms.Compose([
+            transforms.Resize(resize_size),
+            transforms.CenterCrop(crop_size),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=mean, std=std)
+        ])
+
     img_tensor = transform(img_rgb).unsqueeze(0)
     return img_tensor.to(device)
 
@@ -175,9 +183,9 @@ def load_model(
     device: torch.device,
     use_fp16: bool = False
 ) -> torch.nn.Module:
-    """Load model and weights, support FP16 half-precision"""
-    model_cls = MODEL_FACTORY[model_name]
-    model = model_cls(num_classes=num_classes)
+    """Load model architecture using build_model and load weights"""
+    # Use build_model from train.py to ensure consistency
+    model = build_model(model_name, num_classes, init_weights=False)
 
     # Load state dict (support both raw state_dict and checkpoint wrapper)
     checkpoint = torch.load(weight_path, map_location=device)
@@ -204,7 +212,7 @@ def run_inference(
 ) -> Tuple[List[float], List[int]]:
     """Run forward inference and get top-K results"""
     with torch.no_grad():
-        # 🔧 FIX: Get dtype from model parameters instead of model object
+        # Match dtype of model parameters
         if next(model.parameters()).dtype == torch.float16:
             img_tensor = img_tensor.half()
 
@@ -231,6 +239,7 @@ def main():
 
         print(f"==================== Inference Config ====================")
         print(f"Image Path: {args.image.resolve()}")
+        print(f"Dataset: {args.dataset if args.dataset else 'Manual'}")
         print(f"Model: {args.model} | Weights: {args.model_path.resolve()}")
         print(f"Device: {device.type.upper()}")
         print(f"Top-K: {args.top_k} | Classes: {args.num_classes}")
@@ -239,6 +248,7 @@ def main():
         # Preprocess image
         img_tensor = preprocess_image(
             img_path=args.image,
+            dataset=args.dataset,
             resize_size=args.resize,
             crop_size=args.crop,
             mean=args.mean,
@@ -260,11 +270,19 @@ def main():
         top_probs, top_indices = run_inference(model, img_tensor, args.top_k)
         infer_latency_ms = (time.perf_counter() - start_time) * 1000
 
+        # Determine class names
+        if args.class_names:
+            final_class_names = args.class_names
+        elif args.dataset in LABELS:
+            final_class_names = LABELS[args.dataset]
+        else:
+            final_class_names = DEFAULT_CLASS_NAMES
+
         # Print results
         print(f"⏱️  Inference Latency: {infer_latency_ms:.2f} ms")
         print("\n🏆 Top Prediction Results:")
         for prob, idx in zip(top_probs, top_indices):
-            class_name = args.class_names[idx] if idx < len(args.class_names) else f"Class_{idx}"
+            class_name = final_class_names[idx] if idx < len(final_class_names) else f"Class_{idx}"
             print(f"  {class_name:<6} | Confidence: {prob:.4f}")
 
     except Exception as e:
