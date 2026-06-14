@@ -1,11 +1,14 @@
-"""A lightweight PyTorch Dataset for the Kaggle cats-vs-dogs filenames.
-
-This dataset expects files named like `cat.123.jpg` or `dog.456.jpg` inside
-`<root>/train` and supports deterministic train/val/test splits.
-
-It also provides dataset loader helpers and a raw split utility for
-`CV_paper/dataset/dogs_vs_cats`.
 """
+Dogs vs Cats dataset
+@File: dogs_vs_cats.py
+@Description: Data loading for Dogs vs Cats classification with dataset preparation
+
+Note: This dataset must be downloaded from Kaggle:
+https://www.kaggle.com/c/dogs-vs-cats/data
+
+Extract the train.zip to: dataset/dogs_vs_cats/train/
+"""
+
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
 import random
@@ -14,26 +17,15 @@ import shutil
 from PIL import Image
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
-
+from .base import _resolve_dataset_dir
 
 VALID_EXT = {".jpg", ".jpeg", ".png", ".bmp", ".gif"}
 DATASET_NAME_DOGS_VS_CATS = "dogs_vs_cats"
 NUM_CLASSES = 2
 
 
-def _project_root() -> Path:
-    return Path(__file__).resolve().parents[1]
-
-
-def _resolve_dataset_dir(data_root: Optional[Union[str, Path]] = None) -> Path:
-    if data_root is None:
-        data_root = _project_root() / "dataset"
-    else:
-        data_root = Path(data_root)
-    return data_root if data_root.name == "dogs_vs_cats" else data_root / "dogs_vs_cats"
-
-
-def default_transforms(resize: int=224):
+def default_transforms(resize: int = 224):
+    """Get default transforms for training and validation"""
     train_tf = transforms.Compose([
         transforms.Resize((256, 256)),
         transforms.RandomCrop(resize),
@@ -51,6 +43,7 @@ def default_transforms(resize: int=224):
 
 
 def group_files_by_label(source_dir: Path):
+    """Group image files by their label (cat/dog)"""
     files_by_label = {"cat": [], "dog": []}
     for path in sorted(source_dir.iterdir()):
         if not path.is_file():
@@ -66,6 +59,7 @@ def group_files_by_label(source_dir: Path):
 
 
 def split_files(file_paths, train_ratio, val_ratio, seed):
+    """Split file paths into train/val/test sets"""
     random.seed(seed)
     file_paths = list(file_paths)
     random.shuffle(file_paths)
@@ -79,6 +73,7 @@ def split_files(file_paths, train_ratio, val_ratio, seed):
 
 
 def copy_or_move_files(file_paths, target_dir: Path, move=False, verbose=False):
+    """Copy or move files to target directory"""
     if len(file_paths) == 0:
         return
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -102,6 +97,7 @@ def split_raw_dataset(
     move: bool = False,
     verbose: bool = False,
 ):
+    """Split raw dataset into train/val/test directories"""
     source_path = Path(source_dir)
     if source_path.is_dir() and source_path.name == "dogs_vs_cats" and (source_path / "train").exists():
         source_path = source_path / "train"
@@ -163,7 +159,27 @@ def load_data_dogs_vs_cats(
     test_transform: Optional[transforms.Compose] = None,
     verbose: bool = True,
 ) -> Tuple[DataLoader, DataLoader, Optional[DataLoader]]:
-    dataset_dir = _resolve_dataset_dir(data_root)
+    """
+    Load Dogs vs Cats dataset
+    
+    Args:
+        data_root: Root directory for datasets
+        batch_size: Batch size for dataloader
+        resize: Image resize size
+        num_workers: Number of worker threads
+        pin_memory: Enable pin memory
+        train_ratio: Ratio of training data
+        val_ratio: Ratio of validation data
+        seed: Random seed for splitting
+        train_transform: Custom train transforms
+        val_transform: Custom validation transforms
+        test_transform: Custom test transforms
+        verbose: Print loading info
+    
+    Returns:
+        (train_loader, val_loader, test_loader)
+    """
+    dataset_dir = _resolve_dataset_dir(DATASET_NAME_DOGS_VS_CATS, data_root)
     split_dir = dataset_dir / "split"
     default_train_tf, default_val_tf = default_transforms(resize)
 
@@ -172,11 +188,12 @@ def load_data_dogs_vs_cats(
     test_tf = test_transform or val_tf
 
     if verbose:
-        print(f"Loading dataset from: {dataset_dir}")
+        print(f"📦 Loading Dogs vs Cats dataset from: {dataset_dir}")
 
+    # Check for prepared split
     if (split_dir / "train").exists() and (split_dir / "val").exists():
         if verbose:
-            print(f"Using prepared split dataset in: {split_dir}")
+            print(f"✅ Using prepared split dataset in: {split_dir}")
         train_ds = datasets.ImageFolder(str(split_dir / "train"), transform=train_tf)
         val_ds = datasets.ImageFolder(str(split_dir / "val"), transform=val_tf)
 
@@ -194,10 +211,11 @@ def load_data_dogs_vs_cats(
                 print(f"Test samples: {len(test_ds)}")
         return train_loader, val_loader, test_loader
 
+    # Check for raw train directory
     raw_train = dataset_dir / "train"
     if raw_train.exists():
         if verbose:
-            print(f"No prepared split found; creating one from raw files in {raw_train}")
+            print(f"🔄 No prepared split found; creating one from raw files in {raw_train}")
 
         split_raw_dataset(
             source_dir=raw_train,
@@ -222,9 +240,15 @@ def load_data_dogs_vs_cats(
 
         if verbose:
             if test_loader is not None:
-                print(f"Train samples: {len(train_ds)}, Val samples: {len(val_ds)}, Test samples: {len(test_ds)}")
+                print(f"✅ Loaded: {len(train_ds)} train, {len(val_ds)} val, {len(test_ds)} test")
             else:
-                print(f"Train samples: {len(train_ds)}, Val samples: {len(val_ds)}")
+                print(f"✅ Loaded: {len(train_ds)} train, {len(val_ds)} val")
         return train_loader, val_loader, test_loader
 
-    raise FileNotFoundError(f"No usable dataset found under {dataset_dir}")
+    # Dataset not found
+    raise FileNotFoundError(
+        f"❌ No usable dataset found under {dataset_dir}\n"
+        "Please download the Dogs vs Cats dataset from Kaggle:\n"
+        "https://www.kaggle.com/c/dogs-vs-cats/data\n"
+        "Then extract train.zip to: dataset/dogs_vs_cats/train/"
+    )
