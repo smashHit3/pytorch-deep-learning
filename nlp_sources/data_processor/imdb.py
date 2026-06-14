@@ -7,7 +7,7 @@ IMDB sentiment analysis dataset
 from pathlib import Path
 import tarfile
 import urllib.request
-from base import build_vocab_and_loaders
+from nlp_sources.data_processor.base import build_vocab_and_loaders
 
 DATASET_NAME_IMDB = "imdb"
 DATASET_URL = "https://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz"

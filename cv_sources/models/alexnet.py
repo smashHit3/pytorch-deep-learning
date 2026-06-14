@@ -1,7 +1,7 @@
 """
 AlexNet implementation
 @File: alex_net.py
-@Description: AlexNet模型定义
+@Description: AlexNet model definition
 """
 
 import torch
@@ -12,39 +12,39 @@ MODEL_TYPE_ALEXNET = "alexnet"
 class AlexNet(nn.Module):
     def __init__(self, num_classes : int = 1000, dropout : float = 0.5, init_weights=False) -> None:
         super().__init__()
-        self.feasures = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=11, stride=4, padding=2), # 卷积层1
-            nn.ReLU(inplace=True), # 激活函数1
-            nn.MaxPool2d(kernel_size=3, stride=2), # 池化层1
-            nn.Conv2d(64, 192, kernel_size=5, padding=2), # 卷积层2
-            nn.ReLU(inplace=True), # 激活函数2
-            nn.MaxPool2d(kernel_size=3, stride=2), # 池化层2
-            nn.Conv2d(192, 384, kernel_size=3, padding=1), # 卷积层3
-            nn.ReLU(inplace=True), # 激活函数3
-            nn.Conv2d(384, 256, kernel_size=3, padding=1), # 卷积层4
-            nn.ReLU(inplace=True), # 激活函数4
-            nn.Conv2d(256, 256, kernel_size=3, padding=1), # 卷积层5
-            nn.ReLU(inplace=True), # 激活函数5
-            nn.MaxPool2d(kernel_size=3, stride=2), # 池化层3
+        self.features = nn.Sequential(
+            nn.Conv2d(3, 64, kernel_size=11, stride=4, padding=2),  # Convolution layer 1
+            nn.ReLU(inplace=True),  # Activation function 1
+            nn.MaxPool2d(kernel_size=3, stride=2),  # Pooling layer 1
+            nn.Conv2d(64, 192, kernel_size=5, padding=2),  # Convolution layer 2
+            nn.ReLU(inplace=True),  # Activation function 2
+            nn.MaxPool2d(kernel_size=3, stride=2),  # Pooling layer 2
+            nn.Conv2d(192, 384, kernel_size=3, padding=1),  # Convolution layer 3
+            nn.ReLU(inplace=True),  # Activation function 3
+            nn.Conv2d(384, 256, kernel_size=3, padding=1),  # Convolution layer 4
+            nn.ReLU(inplace=True),  # Activation function 4
+            nn.Conv2d(256, 256, kernel_size=3, padding=1),  # Convolution layer 5
+            nn.ReLU(inplace=True),  # Activation function 5
+            nn.MaxPool2d(kernel_size=3, stride=2),  # Pooling layer 3
         )
-        self.avgpool = nn.AdaptiveAvgPool2d((6, 6)) # 自适应平均池化层
+        self.avgpool = nn.AdaptiveAvgPool2d((6, 6))  # Adaptive average pooling layer
         self.classifier = nn.Sequential(
-            nn.Dropout(p=dropout), # Dropout层1
-            nn.Linear(256 * 6 * 6, 4096), # 全连接
-            nn.ReLU(inplace=True), # 激活函数6
-            nn.Dropout(p=dropout), # Dropout层2
-            nn.Linear(4096, 4096), # 全连接
-            nn.ReLU(inplace=True), # 激活函数7
-            nn.Linear(4096, num_classes), # 全连接
+            nn.Dropout(p=dropout),  # Dropout layer 1
+            nn.Linear(256 * 6 * 6, 4096),  # Fully connected layer
+            nn.ReLU(inplace=True),  # Activation function 6
+            nn.Dropout(p=dropout),  # Dropout layer 2
+            nn.Linear(4096, 4096),  # Fully connected layer
+            nn.ReLU(inplace=True),  # Activation function 7
+            nn.Linear(4096, num_classes),  # Fully connected layer
         )
         if init_weights:
             self._initialize_weights()
 
     def forward(self, x : torch.Tensor) -> torch.Tensor:
-        x = self.feasures(x) # 通过卷积层提取特征
-        x = self.avgpool(x) # 通过自适应平均池化层调整特征图大小
-        x = torch.flatten(x, 1) # 将特征图展平为向量
-        x = self.classifier(x) # 通过全连接层进行分类
+        x = self.features(x)  # Extract features through convolutional layers
+        x = self.avgpool(x)  # Adjust feature map size through adaptive average pooling
+        x = torch.flatten(x, 1)  # Flatten feature map into vector
+        x = self.classifier(x)  # Classify through fully connected layers
         return x
     
     def _initialize_weights(self):

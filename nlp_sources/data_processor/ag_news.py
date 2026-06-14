@@ -7,7 +7,7 @@ AG News classification dataset
 from pathlib import Path
 import zipfile
 import urllib.request
-from base import build_vocab_and_loaders
+from nlp_sources.data_processor.base import build_vocab_and_loaders
 
 DATASET_NAME_AG_NEWS = "ag_news"
 DATASET_URL = "https://raw.githubusercontent.com/mhjabreel/CharCnn_Keras/master/data/ag_news_csv.zip"

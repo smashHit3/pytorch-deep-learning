@@ -17,7 +17,7 @@ import shutil
 from PIL import Image
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
-from .base import _resolve_dataset_dir
+from cv_sources.data_processor.base import _resolve_dataset_dir
 
 VALID_EXT = {".jpg", ".jpeg", ".png", ".bmp", ".gif"}
 DATASET_NAME_DOGS_VS_CATS = "dogs_vs_cats"

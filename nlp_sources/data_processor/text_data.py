@@ -5,9 +5,9 @@ Text data processing utilities
 """
 
 from pathlib import Path
-from base import TextDataset, Vocabulary, build_vocab_and_loaders
-from imdb import DATASET_NAME_IMDB, load_data_imdb
-from ag_news import DATASET_NAME_AG_NEWS, load_data_ag_news
+from nlp_sources.data_processor.base import TextDataset, Vocabulary, build_vocab_and_loaders
+from nlp_sources.data_processor.imdb import DATASET_NAME_IMDB, load_data_imdb
+from nlp_sources.data_processor.ag_news import DATASET_NAME_AG_NEWS, load_data_ag_news
 
 
 def load_data(text_dataset, data_root=None, max_samples=None, batch_size=32, max_seq_len=512):

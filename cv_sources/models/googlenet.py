@@ -1,3 +1,9 @@
+"""
+GoogleNet (Inception v1) implementation
+@File: googlenet.py
+@Description: GoogleNet model definition
+"""
+
 import torch
 from torch import nn
 

@@ -7,7 +7,7 @@ FashionMNIST dataset
 import torchvision
 from torchvision import transforms
 from torch.utils import data
-from .base import _project_root
+from cv_sources.data_processor.base import _project_root
 
 DATASET_NAME_FASHION_MNIST = "fashion_mnist"
 NUM_CLASSES = 10

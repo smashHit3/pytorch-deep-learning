@@ -18,11 +18,11 @@ from torch.optim.lr_scheduler import StepLR
 from argparse import ArgumentParser
 
 from nlp_sources.data_processor import text_data
-from nlp_sources.models import rnn, transformer
+from nlp_sources.models import lstm, gru, transformer
 
 MODEL_FILE_MAP = {
-    rnn.MODEL_TYPE_LSTM: "lstm.pth",
-    rnn.MODEL_TYPE_GRU: "gru.pth",
+    lstm.MODEL_TYPE_LSTM: "lstm.pth",
+    gru.MODEL_TYPE_GRU: "gru.pth",
     transformer.MODEL_TYPE_TRANSFORMER: "transformer.pth",
 }
 
@@ -45,8 +45,8 @@ def parse_args():
                         help="Dataloader worker threads")
 
     # ---------------------- Model Config ----------------------
-    parser.add_argument("--model", type=str, default=rnn.MODEL_TYPE_LSTM,
-                        choices=[rnn.MODEL_TYPE_LSTM, rnn.MODEL_TYPE_GRU, 
+    parser.add_argument("--model", type=str, default=lstm.MODEL_TYPE_LSTM,
+                        choices=[lstm.MODEL_TYPE_LSTM, gru.MODEL_TYPE_GRU, 
                                  transformer.MODEL_TYPE_TRANSFORMER],
                         help="Select NLP model")
     parser.add_argument("--embedding-dim", type=int, default=128,
@@ -95,8 +95,8 @@ def auto_update_save_path(args):
 
 def auto_set_model_hyperparams(args):
     model_defaults = {
-        rnn.MODEL_TYPE_LSTM: (0.001, 0.0001, "adam", 5, 0.1),
-        rnn.MODEL_TYPE_GRU: (0.001, 0.0001, "adam", 5, 0.1),
+        lstm.MODEL_TYPE_LSTM: (0.001, 0.0001, "adam", 5, 0.1),
+        gru.MODEL_TYPE_GRU: (0.001, 0.0001, "adam", 5, 0.1),
         transformer.MODEL_TYPE_TRANSFORMER: (0.0001, 0.0001, "adam", 5, 0.1),
     }
 
@@ -125,13 +125,13 @@ def set_random_seed(seed: int):
 
 def build_model(model_type: str, vocab_size: int, num_classes: int, args):
     model_map = {
-        rnn.MODEL_TYPE_LSTM: lambda: rnn.lstm_classifier(
+        lstm.MODEL_TYPE_LSTM: lambda: lstm.lstm_classifier(
             vocab_size=vocab_size,
             embedding_dim=args.embedding_dim,
             hidden_dim=args.hidden_dim,
             num_classes=num_classes
         ),
-        rnn.MODEL_TYPE_GRU: lambda: rnn.gru_classifier(
+        gru.MODEL_TYPE_GRU: lambda: gru.gru_classifier(
             vocab_size=vocab_size,
             embedding_dim=args.embedding_dim,
             hidden_dim=args.hidden_dim,
