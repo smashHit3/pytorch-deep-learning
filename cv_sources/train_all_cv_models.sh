@@ -1,14 +1,17 @@
 #!/bin/bash
-# Batch training script for all models on dogs_vs_cats dataset
-# Each model will be trained for 10 epochs
+# Batch training script for all CV models on dogs_vs_cats dataset
+# This script is specifically for CV tasks and is located in cv_sources/
+# NLP scripts will be placed separately in nlp_sources/
 
-RESULTS_DIR="cv_sources/results"
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+cd "$SCRIPT_DIR" || exit 1
+
+RESULTS_DIR="results"
 
 echo "=========================================="
-echo "Batch Training: All Models on Dogs vs Cats"
+echo "CV Batch Training: All Models on Dogs vs Cats"
 echo "=========================================="
 
-# Define all models with their corresponding weight filenames
 declare -A model_weight_map=(
     ["alexnet"]="alexnet.pth"
     ["vgg11"]="vgg11.pth"
@@ -27,12 +30,10 @@ declare -A model_weight_map=(
     ["mobilenet_0_75"]="mobilenet_0_75.pth"
 )
 
-# Training parameters
 dataset="dogs_vs_cats"
 epochs=10
 batch_size=32
 
-# Function to check if model weight file exists
 check_model_exists() {
     local model_name=$1
     local weight_file=${model_weight_map[$model_name]}
@@ -45,7 +46,8 @@ check_model_exists() {
     fi
 }
 
-# Train each model
+mkdir -p "$RESULTS_DIR"
+
 for model in "${!model_weight_map[@]}"; do
     echo ""
     echo "=========================================="
@@ -59,7 +61,7 @@ for model in "${!model_weight_map[@]}"; do
     
     echo "🚀 Starting training for $model..."
     
-    python cv_sources/classification/train.py \
+    python classification/train.py \
         --model "$model" \
         --dataset "$dataset" \
         --epochs "$epochs" \
@@ -74,7 +76,7 @@ done
 
 echo ""
 echo "=========================================="
-echo "All training completed!"
+echo "CV training completed!"
 echo "=========================================="
 echo "Weights saved to: $RESULTS_DIR/"
 ls -la "$RESULTS_DIR"/*.pth 2>/dev/null || echo "No weight files found"

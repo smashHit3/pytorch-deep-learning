@@ -134,21 +134,21 @@ def auto_set_model_hyperparams(args):
     Format: { model_type: (lr, momentum, weight_decay, preferred_optimizer, lr_step, lr_gamma) }
     """
     model_defaults = {
-        alexnet.MODEL_TYPE_ALEXNET: (0.01, 0.9, 5e-4, "sgd", 5, 0.1),
-        googlenet.MODEL_TYPE_GOOGLENET: (0.001, 0.9, 5e-4, "adam", 5, 0.1),
-        vgg.MODEL_TYPE_VGG11: (0.0001, 0.9, 5e-4, "adam", 5, 0.1),
-        vgg.MODEL_TYPE_VGG13: (0.0001, 0.9, 5e-4, "adam", 5, 0.1),
-        vgg.MODEL_TYPE_VGG16: (0.0001, 0.9, 5e-4, "adam", 5, 0.1),
-        vgg.MODEL_TYPE_VGG19: (0.0001, 0.9, 5e-4, "adam", 5, 0.1),
-        resnet.MODEL_TYPE_RESNET18: (0.001, 0.9, 1e-4, "sgd", 7, 0.1),
-        resnet.MODEL_TYPE_RESNET34: (0.001, 0.9, 1e-4, "sgd", 7, 0.1),
-        resnet.MODEL_TYPE_RESNET50: (0.001, 0.9, 1e-4, "sgd", 7, 0.1),
-        densenet.MODEL_TYPE_DENSENET121: (0.001, 0.9, 1e-4, "sgd", 7, 0.1),
-        densenet.MODEL_TYPE_DENSENET169: (0.001, 0.9, 1e-4, "sgd", 7, 0.1),
-        densenet.MODEL_TYPE_DENSENET201: (0.001, 0.9, 1e-4, "sgd", 7, 0.1),
-        mobilenet.MODEL_TYPE_MOBILENET_1_0: (0.001, 0.9, 1e-4, "sgd", 7, 0.1),
-        mobilenet.MODEL_TYPE_MOBILENET_0_5: (0.001, 0.9, 1e-4, "sgd", 7, 0.1),
-        mobilenet.MODEL_TYPE_MOBILENET_0_75: (0.001, 0.9, 1e-4, "sgd", 7, 0.1),
+        alexnet.MODEL_TYPE_ALEXNET: (0.01, 0.9, 5e-4, "sgd", 10, 0.1),
+        googlenet.MODEL_TYPE_GOOGLENET: (0.001, 0.9, 5e-4, "adam", 10, 0.1),
+        vgg.MODEL_TYPE_VGG11: (0.01, 0.9, 5e-4, "sgd", 10, 0.1),
+        vgg.MODEL_TYPE_VGG13: (0.01, 0.9, 5e-4, "sgd", 10, 0.1),
+        vgg.MODEL_TYPE_VGG16: (0.01, 0.9, 5e-4, "sgd", 10, 0.1),
+        vgg.MODEL_TYPE_VGG19: (0.01, 0.9, 5e-4, "sgd", 10, 0.1),
+        resnet.MODEL_TYPE_RESNET18: (0.1, 0.9, 1e-4, "sgd", 30, 0.1),
+        resnet.MODEL_TYPE_RESNET34: (0.1, 0.9, 1e-4, "sgd", 30, 0.1),
+        resnet.MODEL_TYPE_RESNET50: (0.1, 0.9, 1e-4, "sgd", 30, 0.1),
+        densenet.MODEL_TYPE_DENSENET121: (0.1, 0.9, 1e-4, "sgd", 30, 0.1),
+        densenet.MODEL_TYPE_DENSENET169: (0.1, 0.9, 1e-4, "sgd", 30, 0.1),
+        densenet.MODEL_TYPE_DENSENET201: (0.1, 0.9, 1e-4, "sgd", 30, 0.1),
+        mobilenet.MODEL_TYPE_MOBILENET_1_0: (0.01, 0.9, 1e-4, "sgd", 15, 0.1),
+        mobilenet.MODEL_TYPE_MOBILENET_0_5: (0.01, 0.9, 1e-4, "sgd", 15, 0.1),
+        mobilenet.MODEL_TYPE_MOBILENET_0_75: (0.01, 0.9, 1e-4, "sgd", 15, 0.1),
     }
 
     # Get defaults for the current model, or use a general fallback
