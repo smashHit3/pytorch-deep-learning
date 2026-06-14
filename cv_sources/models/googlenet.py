@@ -34,7 +34,8 @@ class Inception(nn.Module):
         branch3_out = self.branch3(x)
         branch4_out = self.branch4(x)
         return torch.cat([branch1_out, branch2_out, branch3_out, branch4_out], dim=1)
-    
+
+
 class GoogleNet(nn.Module):
     def __init__(self, num_classes=10, init_weights=False):
         super(GoogleNet, self).__init__()
@@ -66,7 +67,7 @@ class GoogleNet(nn.Module):
         self.fc = nn.Linear(1024, num_classes)
         if init_weights:
             self._initialize_weights()
-    
+
     def forward(self, x):
         x = self.conv1(x)
         x = self.conv2(x)
@@ -86,7 +87,7 @@ class GoogleNet(nn.Module):
         x = self.dropout(x)
         x = self.fc(x)
         return x
-    
+
     def _initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -96,3 +97,8 @@ class GoogleNet(nn.Module):
             elif isinstance(m, nn.Linear):
                 nn.init.normal_(m.weight, 0, 0.01)
                 nn.init.constant_(m.bias, 0)
+
+
+def googlenet(num_classes=10, init_weights=True, **kwargs):
+    """GoogleNet model"""
+    return GoogleNet(num_classes=num_classes, init_weights=init_weights)

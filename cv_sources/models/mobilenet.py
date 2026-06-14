@@ -7,8 +7,9 @@ MobileNet implementation
 import torch
 import torch.nn as nn
 
-MODEL_TYPE_MOBILENET = "mobilenet"
-
+MODEL_TYPE_MOBILENET_1_0 = "mobilenet_1_0"
+MODEL_TYPE_MOBILENET_0_5 = "mobilenet_0_5"
+MODEL_TYPE_MOBILENET_0_75 = "mobilenet_0_75"
 
 class DepthwiseSeparableConv(nn.Module):
     """
@@ -44,13 +45,13 @@ class MobileNet(nn.Module):
     """
     MobileNetV1 architecture as described in:
     "MobileNets: Efficient Convolutional Neural Networks for Mobile Vision Applications"
-    
+
     Architecture uses depthwise separable convolutions for efficiency.
     Width multiplier (alpha) scales the number of channels.
     """
     def __init__(self, num_classes=1000, width_multiplier=1.0, init_weights=False):
         super(MobileNet, self).__init__()
-        
+
         # Base configuration: (out_channels, stride, n_repeats)
         # First layer is standard conv, rest are depthwise separable
         config = [
@@ -65,7 +66,7 @@ class MobileNet(nn.Module):
             (1024, 2, 1),  # DW + PW with stride 2
             (1024, 1, 1),  # DW + PW
         ]
-        
+
         # First layer: standard convolution
         first_out = int(32 * width_multiplier)
         self.features = nn.Sequential(
@@ -73,7 +74,7 @@ class MobileNet(nn.Module):
             nn.BatchNorm2d(first_out),
             nn.ReLU(inplace=True)
         )
-        
+
         # Build depthwise separable conv layers
         in_channels = first_out
         for out_channels, stride, n_repeats in config[1:]:
@@ -86,14 +87,14 @@ class MobileNet(nn.Module):
                     DepthwiseSeparableConv(in_channels, out_channels, stride=s)
                 )
                 in_channels = out_channels
-        
+
         # Average pooling and classifier
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.classifier = nn.Sequential(
             nn.Dropout(p=0.2),
             nn.Linear(in_channels, num_classes)
         )
-        
+
         if init_weights:
             self._initialize_weights()
 
@@ -118,16 +119,16 @@ class MobileNet(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
 
-def mobilenet(num_classes=1000, width_multiplier=1.0, init_weights=False, **kwargs):
-    """MobileNetV1 model with optional width multiplier"""
-    return MobileNet(num_classes=num_classes, width_multiplier=width_multiplier, init_weights=init_weights)
+def mobilenet_1_0(num_classes=1000, init_weights=True, **kwargs):
+    """MobileNetV1 model with 1.0 width multiplier (full size)"""
+    return MobileNet(num_classes=num_classes, width_multiplier=1.0, init_weights=init_weights)
 
 
-def mobilenet_0_5(num_classes=1000, init_weights=False, **kwargs):
+def mobilenet_0_5(num_classes=1000, init_weights=True, **kwargs):
     """MobileNet with 0.5 width multiplier (smaller, faster)"""
     return MobileNet(num_classes=num_classes, width_multiplier=0.5, init_weights=init_weights)
 
 
-def mobilenet_0_75(num_classes=1000, init_weights=False, **kwargs):
+def mobilenet_0_75(num_classes=1000, init_weights=True, **kwargs):
     """MobileNet with 0.75 width multiplier"""
     return MobileNet(num_classes=num_classes, width_multiplier=0.75, init_weights=init_weights)

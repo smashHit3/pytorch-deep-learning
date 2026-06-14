@@ -26,6 +26,7 @@ class BottleNeck(nn.Module):
         out = self.relu(out)
         return out
 
+
 class DenseBlock(nn.Module):
     def __init__(self, num_layers, growth_rate, in_planes):
         super(DenseBlock, self).__init__()
@@ -40,6 +41,7 @@ class DenseBlock(nn.Module):
             x = torch.cat([x, new_features], dim=1)
         return x
 
+
 class TransitionLayer(nn.Module):
     def __init__(self, in_planes, out_planes):
         super(TransitionLayer, self).__init__()
@@ -52,6 +54,7 @@ class TransitionLayer(nn.Module):
         out = self.relu(self.bn(self.conv(x)))
         out = self.avgpool(out)
         return out
+
 
 class DenseNet(nn.Module):
     def __init__(self, block_config, growth_rate, num_classes=1000, init_weights=False):
@@ -113,17 +116,17 @@ class DenseNet(nn.Module):
                 nn.init.normal_(m.weight, 0, 0.01)
                 nn.init.constant_(m.bias, 0)
 
-class DenseNet121(DenseNet):
-    def __init__(self, num_classes=1000, init_weights=False):
-        # DenseNet-121: [6, 12, 24, 16], growth rate 32
-        super(DenseNet121, self).__init__(block_config=[6, 12, 24, 16], growth_rate=32, num_classes=num_classes, init_weights=init_weights)
 
-class DenseNet169(DenseNet):
-    def __init__(self, num_classes=1000, init_weights=False):
-        # DenseNet-169: [6, 12, 32, 32], growth rate 32
-        super(DenseNet169, self).__init__(block_config=[6, 12, 32, 32], growth_rate=32, num_classes=num_classes, init_weights=init_weights)
+def densenet121(num_classes=1000, init_weights=True, **kwargs):
+    # DenseNet-121: [6, 12, 24, 16], growth rate 32
+    return DenseNet(block_config=[6, 12, 24, 16], growth_rate=32, num_classes=num_classes, init_weights=init_weights)
 
-class DenseNet201(DenseNet):
-    def __init__(self, num_classes=1000, init_weights=False):
-        # DenseNet-201: [6, 12, 48, 32], growth rate 32
-        super(DenseNet201, self).__init__(block_config=[6, 12, 48, 32], growth_rate=32, num_classes=num_classes, init_weights=init_weights)
+
+def densenet169(num_classes=1000, init_weights=True, **kwargs):
+    # DenseNet-169: [6, 12, 32, 32], growth rate 32
+    return DenseNet(block_config=[6, 12, 32, 32], growth_rate=32, num_classes=num_classes, init_weights=init_weights)
+
+
+def densenet201(num_classes=1000, init_weights=True, **kwargs):
+    # DenseNet-201: [6, 12, 48, 32], growth rate 32
+    return DenseNet(block_config=[6, 12, 48, 32], growth_rate=32, num_classes=num_classes, init_weights=init_weights)
