@@ -1,7 +1,7 @@
 """
 VGG implementation
 @File: vgg.py
-@Description: VGG模型定义
+@Description: VGG model definition
 """
 
 import torch
