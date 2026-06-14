@@ -34,7 +34,7 @@ MODEL_FILE_MAP = {
     densenet.MODEL_TYPE_DENSENET121: "densenet121.pth",
     densenet.MODEL_TYPE_DENSENET169: "densenet169.pth",
     densenet.MODEL_TYPE_DENSENET201: "densenet201.pth",
-    mobilenet.MODEL_TYPE_MOBILENET: "mobilenet.pth",
+    mobilenet.MODEL_TYPE_MOBILENET_1_0: "mobilenet_1_0.pth",
     mobilenet.MODEL_TYPE_MOBILENET_0_5: "mobilenet_0_5.pth",
     mobilenet.MODEL_TYPE_MOBILENET_0_75: "mobilenet_0_75.pth",
 }
@@ -69,7 +69,7 @@ def parse_args():
                                  vgg.MODEL_TYPE_VGG16, vgg.MODEL_TYPE_VGG19,
                                  resnet.MODEL_TYPE_RESNET18, resnet.MODEL_TYPE_RESNET34, resnet.MODEL_TYPE_RESNET50,
                                  densenet.MODEL_TYPE_DENSENET121, densenet.MODEL_TYPE_DENSENET169, densenet.MODEL_TYPE_DENSENET201,
-                                 mobilenet.MODEL_TYPE_MOBILENET, mobilenet.MODEL_TYPE_MOBILENET_0_5, mobilenet.MODEL_TYPE_MOBILENET_0_75],
+                                 mobilenet.MODEL_TYPE_MOBILENET_1_0, mobilenet.MODEL_TYPE_MOBILENET_0_5, mobilenet.MODEL_TYPE_MOBILENET_0_75],
                         help="Select CNN model (AlexNet as default)")
     parser.add_argument("--init-weights", action="store_true", default=True,
                         help="Initialize model weights")
@@ -146,7 +146,7 @@ def auto_set_model_hyperparams(args):
         densenet.MODEL_TYPE_DENSENET121: (0.001, 0.9, 1e-4, "sgd", 7, 0.1),
         densenet.MODEL_TYPE_DENSENET169: (0.001, 0.9, 1e-4, "sgd", 7, 0.1),
         densenet.MODEL_TYPE_DENSENET201: (0.001, 0.9, 1e-4, "sgd", 7, 0.1),
-        mobilenet.MODEL_TYPE_MOBILENET: (0.001, 0.9, 1e-4, "sgd", 7, 0.1),
+        mobilenet.MODEL_TYPE_MOBILENET_1_0: (0.001, 0.9, 1e-4, "sgd", 7, 0.1),
         mobilenet.MODEL_TYPE_MOBILENET_0_5: (0.001, 0.9, 1e-4, "sgd", 7, 0.1),
         mobilenet.MODEL_TYPE_MOBILENET_0_75: (0.001, 0.9, 1e-4, "sgd", 7, 0.1),
     }
@@ -219,9 +219,9 @@ def build_model(model_type: str, num_classes: int, init_weights: bool):
         densenet.MODEL_TYPE_DENSENET121: lambda: densenet.DenseNet121(num_classes=num_classes, init_weights=init_weights),
         densenet.MODEL_TYPE_DENSENET169: lambda: densenet.DenseNet169(num_classes=num_classes, init_weights=init_weights),
         densenet.MODEL_TYPE_DENSENET201: lambda: densenet.DenseNet201(num_classes=num_classes, init_weights=init_weights),
-        mobilenet.MODEL_TYPE_MOBILENET: lambda: mobilenet.MobileNet(num_classes=num_classes, init_weights=init_weights),
-        mobilenet.MODEL_TYPE_MOBILENET_0_5: lambda: mobilenet.MobileNet(num_classes=num_classes, width_multiplier=0.5, init_weights=init_weights),
-        mobilenet.MODEL_TYPE_MOBILENET_0_75: lambda: mobilenet.MobileNet(num_classes=num_classes, width_multiplier=0.75, init_weights=init_weights),
+        mobilenet.MODEL_TYPE_MOBILENET_1_0: lambda: mobilenet.mobilenet_1_0(num_classes=num_classes, init_weights=init_weights),
+        mobilenet.MODEL_TYPE_MOBILENET_0_5: lambda: mobilenet.mobilenet_0_5(num_classes=num_classes, init_weights=init_weights),
+        mobilenet.MODEL_TYPE_MOBILENET_0_75: lambda: mobilenet.mobilenet_0_75(num_classes=num_classes, init_weights=init_weights),
     }
     return model_map[model_type]()
 

@@ -7,7 +7,7 @@ MobileNet implementation
 import torch
 import torch.nn as nn
 
-MODEL_TYPE_MOBILENET = "mobilenet"
+MODEL_TYPE_MOBILENET_1_0 = "mobilenet_1_0"
 MODEL_TYPE_MOBILENET_0_5 = "mobilenet_0_5"
 MODEL_TYPE_MOBILENET_0_75 = "mobilenet_0_75"
 
@@ -120,9 +120,9 @@ class MobileNet(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
 
-def mobilenet_v1(num_classes=1000, width_multiplier=1.0, init_weights=False, **kwargs):
-    """MobileNetV1 model with optional width multiplier"""
-    return MobileNet(num_classes=num_classes, width_multiplier=width_multiplier, init_weights=init_weights)
+def mobilenet_1_0(num_classes=1000, init_weights=False, **kwargs):
+    """MobileNetV1 model with 1.0 width multiplier (full size)"""
+    return MobileNet(num_classes=num_classes, width_multiplier=1.0, init_weights=init_weights)
 
 
 def mobilenet_0_5(num_classes=1000, init_weights=False, **kwargs):
