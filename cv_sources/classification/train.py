@@ -17,7 +17,7 @@ from argparse import ArgumentParser
 
 # Import custom modules
 from cv_sources.data_processor import fashion_mnist, dogs_vs_cats
-from cv_sources.models import alexnet, googlenet, vgg, resnet, densenet, mobilenet
+from cv_sources.models import alexnet, googlenet, vgg, resnet, densenet, mobilenet, vit
 
 # ---------------- Global Constant: Model -> Save Filename Mapping ----------------
 # Match model type to weight file name for auto path update
@@ -37,6 +37,8 @@ MODEL_FILE_MAP = {
     mobilenet.MODEL_TYPE_MOBILENET_1_0: "mobilenet_1_0.pth",
     mobilenet.MODEL_TYPE_MOBILENET_0_5: "mobilenet_0_5.pth",
     mobilenet.MODEL_TYPE_MOBILENET_0_75: "mobilenet_0_75.pth",
+    vit.MODEL_TYPE_VIT_BASE: "vit_base.pth",
+    vit.MODEL_TYPE_VIT_SMALL: "vit_small.pth",
 }
 # Original default save path (for judgment)
 ORIG_DEFAULT_SAVE_PATH = PROJECT_ROOT / "results" / "default_model.pth"
@@ -69,7 +71,8 @@ def parse_args():
                                  vgg.MODEL_TYPE_VGG16, vgg.MODEL_TYPE_VGG19,
                                  resnet.MODEL_TYPE_RESNET18, resnet.MODEL_TYPE_RESNET34, resnet.MODEL_TYPE_RESNET50,
                                  densenet.MODEL_TYPE_DENSENET121, densenet.MODEL_TYPE_DENSENET169, densenet.MODEL_TYPE_DENSENET201,
-                                 mobilenet.MODEL_TYPE_MOBILENET_1_0, mobilenet.MODEL_TYPE_MOBILENET_0_5, mobilenet.MODEL_TYPE_MOBILENET_0_75],
+                                 mobilenet.MODEL_TYPE_MOBILENET_1_0, mobilenet.MODEL_TYPE_MOBILENET_0_5, mobilenet.MODEL_TYPE_MOBILENET_0_75,
+                                 vit.MODEL_TYPE_VIT_BASE, vit.MODEL_TYPE_VIT_SMALL],
                         help="Select CNN model (AlexNet as default)")
     parser.add_argument("--init-weights", action="store_true", default=True,
                         help="Initialize model weights")
@@ -82,8 +85,8 @@ def parse_args():
     parser.add_argument("--lr", type=float, default=None,
                         help="Initial learning rate (Auto set based on model)")
     parser.add_argument("--optimizer", type=str, default=None,
-                        choices=["adam", "sgd"],
-                        help="Optimizer type (GoogLeNet: Adam, others: SGD)")
+                        choices=["adam", "sgd", "adamw"],
+                        help="Optimizer type (GoogLeNet: Adam, ViT: AdamW, others: SGD)")
     parser.add_argument("--momentum", type=float, default=None,
                         help="Momentum for SGD (Auto set for AlexNet: 0.9)")
     parser.add_argument("--weight-decay", type=float, default=None,
@@ -149,6 +152,8 @@ def auto_set_model_hyperparams(args):
         mobilenet.MODEL_TYPE_MOBILENET_1_0: (0.01, 0.9, 1e-4, "sgd", 15, 0.1),
         mobilenet.MODEL_TYPE_MOBILENET_0_5: (0.01, 0.9, 1e-4, "sgd", 15, 0.1),
         mobilenet.MODEL_TYPE_MOBILENET_0_75: (0.01, 0.9, 1e-4, "sgd", 15, 0.1),
+        vit.MODEL_TYPE_VIT_BASE: (0.001, 0.9, 3e-2, "adamw", 30, 0.1),
+        vit.MODEL_TYPE_VIT_SMALL: (0.001, 0.9, 3e-2, "adamw", 30, 0.1),
     }
 
     # Get defaults for the current model, or use a general fallback
@@ -222,6 +227,8 @@ def build_model(model_type: str, num_classes: int, init_weights: bool):
         mobilenet.MODEL_TYPE_MOBILENET_1_0: lambda: mobilenet.mobilenet_1_0(num_classes=num_classes, init_weights=init_weights),
         mobilenet.MODEL_TYPE_MOBILENET_0_5: lambda: mobilenet.mobilenet_0_5(num_classes=num_classes, init_weights=init_weights),
         mobilenet.MODEL_TYPE_MOBILENET_0_75: lambda: mobilenet.mobilenet_0_75(num_classes=num_classes, init_weights=init_weights),
+        vit.MODEL_TYPE_VIT_BASE: lambda: vit.vit_base(num_classes=num_classes, init_weights=init_weights),
+        vit.MODEL_TYPE_VIT_SMALL: lambda: vit.vit_small(num_classes=num_classes, init_weights=init_weights),
     }
     return model_map[model_type]()
 
@@ -233,6 +240,12 @@ def build_optimizer(model: nn.Module, opt_type: str, lr: float, momentum: float,
             model.parameters(),
             lr=lr,
             momentum=momentum,
+            weight_decay=weight_decay
+        )
+    elif opt_type.lower() == "adamw":
+        return optim.AdamW(
+            model.parameters(),
+            lr=lr,
             weight_decay=weight_decay
         )
     return optim.Adam(

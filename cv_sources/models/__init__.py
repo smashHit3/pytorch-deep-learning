@@ -8,6 +8,7 @@ from .resnet import ResNet, resnet18, resnet34, resnet50, MODEL_TYPE_RESNET18, M
 from .googlenet import GoogleNet, MODEL_TYPE_GOOGLENET
 from .densenet import DenseNet, densenet121, densenet169, densenet201, MODEL_TYPE_DENSENET121, MODEL_TYPE_DENSENET169, MODEL_TYPE_DENSENET201
 from .mobilenet import MobileNet, mobilenet_1_0, mobilenet_0_5, mobilenet_0_75, MODEL_TYPE_MOBILENET_1_0, MODEL_TYPE_MOBILENET_0_5, MODEL_TYPE_MOBILENET_0_75
+from .vit import ViT, vit_base, vit_small, MODEL_TYPE_VIT_BASE, MODEL_TYPE_VIT_SMALL
 
 __all__ = [
     'AlexNet', 'alexnet', 'MODEL_TYPE_ALEXNET',
@@ -16,4 +17,5 @@ __all__ = [
     'GoogleNet', 'googlenet', 'MODEL_TYPE_GOOGLENET',
     'DenseNet', 'densenet121', 'densenet169', 'densenet201', 'MODEL_TYPE_DENSENET121', 'MODEL_TYPE_DENSENET169', 'MODEL_TYPE_DENSENET201',
     'MobileNet', 'mobilenet_1_0', 'mobilenet_0_5', 'mobilenet_0_75', 'MODEL_TYPE_MOBILENET_1_0', 'MODEL_TYPE_MOBILENET_0_5', 'MODEL_TYPE_MOBILENET_0_75',
+    'ViT', 'vit_base', 'vit_small', 'MODEL_TYPE_VIT_BASE', 'MODEL_TYPE_VIT_SMALL',
 ]
