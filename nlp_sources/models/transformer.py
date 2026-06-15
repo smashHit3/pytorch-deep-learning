@@ -49,22 +49,30 @@ class TransformerClassifier(nn.Module):
 
 class PositionalEncoding(nn.Module):
     """
-    Positional encoding for transformer
+    Positional encoding for transformer (batch_first=True version)
+
+    Shape conventions:
+        Input x:  (batch_size, seq_len, d_model)
+        pe:       (1, max_len, d_model)  — slice by sequence position
     """
     def __init__(self, d_model, dropout=0.1, max_len=5000):
         super(PositionalEncoding, self).__init__()
         self.dropout = nn.Dropout(p=dropout)
-        
-        position = torch.arange(max_len).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2) * (-torch.log(torch.tensor(10000.0)) / d_model))
-        
-        pe = torch.zeros(max_len, 1, d_model)
-        pe[:, 0, 0::2] = torch.sin(position * div_term)
-        pe[:, 0, 1::2] = torch.cos(position * div_term)
+
+        position = torch.arange(max_len).unsqueeze(1)          # (max_len, 1)
+        div_term = torch.exp(
+            torch.arange(0, d_model, 2) * (-torch.log(torch.tensor(10000.0)) / d_model)
+        )                                                         # (d_model/2,)
+
+        pe = torch.zeros(1, max_len, d_model)                    # (1, max_len, d_model)
+        pe[0, :, 0::2] = torch.sin(position * div_term)           # sin for even channels
+        pe[0, :, 1::2] = torch.cos(position * div_term)           # cos for odd channels
         self.register_buffer('pe', pe)
-        
+
     def forward(self, x):
-        x = x + self.pe[:x.size(0)]
+        # x: (batch_size, seq_len, d_model)
+        # pe[:, :x.size(1)]: (1, seq_len, d_model) — broadcast across batch
+        x = x + self.pe[:, :x.size(1)]
         return self.dropout(x)
 
 
