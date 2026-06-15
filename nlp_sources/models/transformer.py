@@ -1,7 +1,7 @@
 """
 Transformer-based models for NLP tasks
 @File: transformer.py
-@Description: Transformer encoder for text classification
+@Description: Transformer encoder for text classification following PyTorch best practices
 """
 
 import torch
@@ -13,7 +13,7 @@ MODEL_TYPE_TRANSFORMER = "transformer"
 
 class TransformerClassifier(nn.Module):
     """
-    Transformer-based text classifier
+    Transformer-based text classifier following PyTorch official recommendations
     """
     def __init__(self, vocab_size, embedding_dim, num_heads, num_layers, 
                  hidden_dim, num_classes, dropout=0.5, max_seq_len=512):
@@ -27,19 +27,44 @@ class TransformerClassifier(nn.Module):
             nhead=num_heads,
             dim_feedforward=hidden_dim,
             dropout=dropout,
-            batch_first=True
+            batch_first=True,
+            norm_first=True  # Pre-normalization as in original Transformer
         )
         self.transformer_encoder = nn.TransformerEncoder(encoder_layers, num_layers=num_layers)
         
         self.dropout = nn.Dropout(dropout)
         self.fc = nn.Linear(embedding_dim, num_classes)
         
+        self.init_weights()
+        
+    def init_weights(self):
+        """Initialize weights following PyTorch official recommendations"""
+        # Initialize embedding with uniform distribution
+        nn.init.uniform_(self.embedding.weight, -0.1, 0.1)
+        
+        # Initialize transformer encoder weights
+        for name, param in self.transformer_encoder.named_parameters():
+            if 'weight' in name:
+                if param.dim() > 1:
+                    # Xavier uniform for weight matrices
+                    nn.init.xavier_uniform_(param)
+            elif 'bias' in name:
+                nn.init.zeros_(param)
+            elif 'norm' in name and 'weight' in name:
+                # Layer norm weights initialized to 1
+                nn.init.ones_(param)
+        
+        # Initialize fully connected layer
+        nn.init.xavier_uniform_(self.fc.weight)
+        nn.init.zeros_(self.fc.bias)
+        
     def forward(self, x):
-        embeds = self.embedding(x)
+        embeds = self.embedding(x) * torch.sqrt(torch.tensor(self.embedding.embedding_dim, dtype=torch.float32))
         embeds = self.pos_encoder(embeds)
         
         output = self.transformer_encoder(embeds)
         
+        # Use cls token (first token) for classification
         cls_token = output[:, 0, :]
         cls_token = self.dropout(cls_token)
         logits = self.fc(cls_token)
@@ -49,7 +74,7 @@ class TransformerClassifier(nn.Module):
 
 class PositionalEncoding(nn.Module):
     """
-    Positional encoding for transformer
+    Positional encoding for transformer following official PyTorch implementation
     """
     def __init__(self, d_model, dropout=0.1, max_len=5000):
         super(PositionalEncoding, self).__init__()
@@ -64,7 +89,8 @@ class PositionalEncoding(nn.Module):
         self.register_buffer('pe', pe)
         
     def forward(self, x):
-        x = x + self.pe[:x.size(0)]
+        # x: (batch_size, seq_len, d_model) when batch_first=True
+        x = x + self.pe[:x.size(1)]  # Use seq_len dimension
         return self.dropout(x)
 
 

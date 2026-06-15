@@ -15,6 +15,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import CosineAnnealingLR
 from argparse import ArgumentParser
 
 from nlp_sources.data_processor import text_data
@@ -95,9 +96,9 @@ def auto_update_save_path(args):
 
 def auto_set_model_hyperparams(args):
     model_defaults = {
-        lstm.MODEL_TYPE_LSTM: (0.001, 0.0001, "adam", 5, 0.1),
-        gru.MODEL_TYPE_GRU: (0.001, 0.0001, "adam", 5, 0.1),
-        transformer.MODEL_TYPE_TRANSFORMER: (0.0001, 0.0001, "adam", 5, 0.1),
+        lstm.MODEL_TYPE_LSTM: (0.001, 0.0001, "adam", 10, 0.5),
+        gru.MODEL_TYPE_GRU: (0.001, 0.0001, "adam", 10, 0.5),
+        transformer.MODEL_TYPE_TRANSFORMER: (0.001, 0.0001, "adam", 10, 0.5),
     }
 
     default_lr, default_wd, default_opt, default_step, default_gamma = model_defaults.get(
@@ -161,6 +162,10 @@ def train_one_epoch(model, device, loader, criterion, optimizer):
         loss = criterion(outputs, labels)
 
         loss.backward()
+        
+        # Gradient clipping to prevent exploding gradients
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
+        
         optimizer.step()
 
         total_loss += loss.item() * texts.size(0)
@@ -235,8 +240,10 @@ def main():
     model = build_model(args.model, vocab.size, num_classes, args).to(device)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    scheduler = StepLR(optimizer, step_size=args.lr_step, gamma=args.lr_gamma) if args.use_scheduler else None
+    # Use AdamW optimizer which is recommended for NLP tasks
+    optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    # Use CosineAnnealingLR scheduler which is better than StepLR for most cases
+    scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs) if args.use_scheduler else None
 
     train_loop(model, device, train_loader, val_loader, optimizer, scheduler, criterion, args.epochs)
 

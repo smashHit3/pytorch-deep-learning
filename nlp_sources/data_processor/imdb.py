@@ -19,11 +19,14 @@ def download_imdb(data_dir: Path):
     """
     data_dir.mkdir(parents=True, exist_ok=True)
     
+    # The tar.gz extracts to an 'aclImdb' subdirectory
+    acl_dir = data_dir / 'aclImdb'
+    train_dir = acl_dir / 'train'
+    test_dir = acl_dir / 'test'
+    
     # Check if already extracted
-    train_dir = data_dir / 'train'
-    test_dir = data_dir / 'test'
     if train_dir.exists() and test_dir.exists():
-        print(f"✅ IMDB dataset already exists in {data_dir}")
+        print(f"✅ IMDB dataset already exists in {acl_dir}")
         return
     
     # Download the dataset
@@ -43,7 +46,7 @@ def download_imdb(data_dir: Path):
     
     # Clean up tar file
     tar_path.unlink()
-    print(f"✅ IMDB dataset extracted to {data_dir}")
+    print(f"✅ IMDB dataset extracted to {acl_dir}")
 
 
 def load_imdb_data(data_dir: Path, max_samples=None):
@@ -84,9 +87,12 @@ def load_data_imdb(data_root=None, max_samples=None, batch_size=32, max_seq_len=
     # Download if needed
     download_imdb(imdb_dir)
     
+    # The actual data is inside the aclImdb subdirectory
+    acl_dir = imdb_dir / 'aclImdb'
+    
     # Load data
-    train_texts, train_labels = load_imdb_data(imdb_dir / 'train', max_samples)
-    test_texts, test_labels = load_imdb_data(imdb_dir / 'test', max_samples)
+    train_texts, train_labels = load_imdb_data(acl_dir / 'train', max_samples)
+    test_texts, test_labels = load_imdb_data(acl_dir / 'test', max_samples)
     num_classes = 2
     
     # Build vocab and create loaders
