@@ -27,10 +27,9 @@ class TransformerClassifier(nn.Module):
             nhead=num_heads,
             dim_feedforward=hidden_dim,
             dropout=dropout,
-            batch_first=True,
-            norm_first=True  # Pre-normalization as in original Transformer
+            batch_first=True
         )
-        self.transformer_encoder = nn.TransformerEncoder(encoder_layers, num_layers=num_layers)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layers, num_layers=num_layers, enable_nested_tensor=False)
         
         self.dropout = nn.Dropout(dropout)
         self.fc = nn.Linear(embedding_dim, num_classes)
@@ -59,7 +58,7 @@ class TransformerClassifier(nn.Module):
         nn.init.zeros_(self.fc.bias)
         
     def forward(self, x):
-        embeds = self.embedding(x) * torch.sqrt(torch.tensor(self.embedding.embedding_dim, dtype=torch.float32))
+        embeds = self.embedding(x) * (self.embedding.embedding_dim ** 0.5)
         embeds = self.pos_encoder(embeds)
         
         output = self.transformer_encoder(embeds)
