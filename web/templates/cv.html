@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Classification</title>
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/cv.css">
+    <style>
+        #result {
+            border-top: 1px solid #eee;
+            text-align: left;
+        }
+        .prediction-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 0.5rem 0;
+            font-size: 1.1rem;
+        }
+        .top-prediction {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav-links">
+            <strong>Image Classification</strong> | <a href="/nlp">Text Classification</a>
+        </div>
+
+        <h1>AI Image Classifier</h1>
+        <p>Select a model and upload an image to classify</p>
+
+        <div class="config-panel">
+            <label for="model-select">Choose Model:</label>
+            <select id="model-select">
+                {% for model in available_models %}
+                <option value="{{ model }}" {% if model == model_name %}selected{% endif %}>{{ model }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="upload-section" onclick="document.getElementById('file-input').click()">
+            <span id="upload-text">Click to upload image</span>
+            <img id="image-preview" src="#" alt="Preview">
+        </div>
+
+        <input type="file" id="file-input" style="display: none;" accept="image/*" onchange="previewImage(this)">
+
+        <button id="predict-btn" class="btn" onclick="uploadImage()" disabled>Classify Image</button>
+
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Analyzing...</p>
+        </div>
+
+        <div id="result" class="result">
+            <div class="top-prediction" id="top-label">...</div>
+            <div id="prediction-list"></div>
+        </div>
+    </div>
+
+    <script src="/static/js/cv.js"></script>
+</body>
+</html>

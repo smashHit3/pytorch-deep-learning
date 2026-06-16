@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Classification</title>
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/nlp.css">
+</head>
+<body>
+    <div class="container">
+        <div class="nav-links">
+            <a href="/">Image Classification</a> | <strong>Text Classification</strong>
+        </div>
+
+        <h1>NLP Text Classification</h1>
+        <p>Sentiment Analysis with Deep Learning</p>
+
+        <div class="config-panel">
+            <label for="model">Model</label>
+            <select id="model">
+                <option value="lstm">LSTM</option>
+                <option value="gru">GRU</option>
+                <option value="transformer">Transformer</option>
+            </select>
+        </div>
+
+        <textarea id="text" placeholder="Enter movie review text to classify..."></textarea>
+
+        <button class="btn" id="predictBtn" onclick="predict()">Classify</button>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analyzing...</p>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="result" id="result">
+            <div class="prediction" id="prediction"></div>
+            <div class="confidence" id="confidence"></div>
+        </div>
+    </div>
+
+    <script src="/static/js/nlp.js"></script>
+</body>
+</html>

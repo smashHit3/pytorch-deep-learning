@@ -74,6 +74,27 @@ class Vocabulary:
             
         return indexed
     
+    def save(self, path):
+        """Save vocabulary to file"""
+        import json
+        data = {
+            'word2idx': self.word2idx,
+            'idx2word': {str(k): v for k, v in self.idx2word.items()}
+        }
+        with open(path, 'w') as f:
+            json.dump(data, f)
+
+    @classmethod
+    def load(cls, path):
+        """Load vocabulary from file"""
+        import json
+        with open(path, 'r') as f:
+            data = json.load(f)
+        vocab = cls()
+        vocab.word2idx = data['word2idx']
+        vocab.idx2word = {int(k): v for k, v in data['idx2word'].items()}
+        return vocab
+
     @property
     def size(self):
         return len(self.word2idx)

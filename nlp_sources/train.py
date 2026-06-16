@@ -209,10 +209,16 @@ def train_loop(model, device, train_loader, val_loader, optimizer, scheduler, cr
             scheduler.step()
 
 
-def save_weights(model: nn.Module, save_path: Path):
+def save_weights(model: nn.Module, save_path: Path, vocab=None, dataset: str = "imdb"):
     save_path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(model.state_dict(), save_path)
     print(f"\n✅ Model weights saved to: {save_path.resolve()}")
+
+    # Save vocabulary for inference (no dataset loading needed later)
+    if vocab is not None:
+        vocab_path = save_path.parent / f"vocab_{dataset}.json"
+        vocab.save(str(vocab_path))
+        print(f"✅ Vocabulary saved to: {vocab_path.resolve()}")
 
 
 def main():
@@ -247,7 +253,7 @@ def main():
 
     train_loop(model, device, train_loader, val_loader, optimizer, scheduler, criterion, args.epochs)
 
-    save_weights(model, args.save_path)
+    save_weights(model, args.save_path, vocab=vocab, dataset=args.dataset)
 
 
 if __name__ == "__main__":
