@@ -1,38 +1,55 @@
-function previewImage(input) {
-    const preview = document.getElementById('image-preview');
-    const text = document.getElementById('upload-text');
-    const btn = document.getElementById('predict-btn');
+const fileInput = document.getElementById('file-input');
+const uploadText = document.getElementById('upload-text');
+const imagePreview = document.getElementById('image-preview');
+const predictButton = document.getElementById('predict-btn');
+const loading = document.getElementById('loading');
+const resultSection = document.getElementById('result');
+const errorSection = document.getElementById('error');
+const topLabel = document.getElementById('top-label');
+const topConfidence = document.getElementById('top-confidence');
+const resultModel = document.getElementById('result-model');
+const predictionList = document.getElementById('prediction-list');
 
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            preview.src = e.target.result;
-            preview.style.display = 'block';
-            text.style.display = 'none';
-            btn.disabled = false;
-        }
-        reader.readAsDataURL(input.files[0]);
+if (fileInput && predictButton) {
+    fileInput.addEventListener('change', previewImage);
+    predictButton.addEventListener('click', uploadImage);
+}
+
+function previewImage() {
+    clearError();
+    resultSection.classList.remove('show');
+
+    if (!fileInput.files || !fileInput.files[0]) {
+        uploadText.textContent = 'Choose an image';
+        imagePreview.style.display = 'none';
+        predictButton.disabled = true;
+        return;
     }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        imagePreview.src = event.target.result;
+        imagePreview.style.display = 'block';
+        uploadText.textContent = fileInput.files[0].name;
+        predictButton.disabled = false;
+    };
+    reader.readAsDataURL(fileInput.files[0]);
 }
 
 async function uploadImage() {
-    const fileInput = document.getElementById('file-input');
-    const modelSelect = document.getElementById('model-select');
-    const btn = document.getElementById('predict-btn');
-    const loader = document.getElementById('loading');
-    const resultDiv = document.getElementById('result');
-    const topLabel = document.getElementById('top-label');
-    const predList = document.getElementById('prediction-list');
+    if (!fileInput.files || !fileInput.files[0]) {
+        showError('Choose an image before running inference.');
+        return;
+    }
 
-    if (!fileInput.files[0]) return;
-
-    btn.disabled = true;
-    loader.style.display = 'block';
-    resultDiv.classList.remove('show');
+    clearError();
+    resultSection.classList.remove('show');
+    predictButton.disabled = true;
+    loading.style.display = 'block';
 
     const formData = new FormData();
     formData.append('file', fileInput.files[0]);
-    formData.append('model_name', modelSelect.value);
+    formData.append('model_name', document.getElementById('model-select').value);
 
     try {
         const response = await fetch('/cv/predict', {
@@ -41,34 +58,50 @@ async function uploadImage() {
         });
         const data = await response.json();
 
-        if (data.error) {
-            alert('Error: ' + data.error);
-        } else {
-            topLabel.innerText = `Prediction: ${data.top_label}`;
-
-            predList.innerHTML = '';
-            data.predictions.forEach(pred => {
-                const div = document.createElement('div');
-                div.className = 'prediction-item';
-                div.innerHTML = `
-                    <span>${pred.label}</span>
-                    <span>${pred.confidence}%</span>
-                `;
-
-                const barContainer = document.createElement('div');
-                barContainer.className = 'confidence-bar';
-                barContainer.innerHTML = `<div class="confidence-fill" style="width: ${pred.confidence}%"></div>`;
-
-                predList.appendChild(div);
-                predList.appendChild(barContainer);
-            });
-
-            resultDiv.classList.add('show');
+        if (!response.ok) {
+            showError(data.error || 'Image classification failed.');
+            return;
         }
-    } catch (e) {
-        alert('Network error occurred');
+
+        renderPredictions(data);
+    } catch (error) {
+        showError(`Network error: ${error.message}`);
     } finally {
-        btn.disabled = false;
-        loader.style.display = 'none';
+        loading.style.display = 'none';
+        predictButton.disabled = false;
     }
+}
+
+function renderPredictions(data) {
+    topLabel.textContent = data.top_label;
+    topConfidence.textContent = `${data.top_confidence}% confidence`;
+    resultModel.textContent = data.model_name;
+    predictionList.innerHTML = '';
+
+    data.predictions.forEach((prediction) => {
+        const card = document.createElement('div');
+        card.className = 'prediction-card';
+        card.innerHTML = `
+            <div class="prediction-row">
+                <span>${prediction.label}</span>
+                <span>${prediction.confidence}%</span>
+            </div>
+            <div class="confidence-track">
+                <div class="confidence-fill" style="width: ${prediction.confidence}%"></div>
+            </div>
+        `;
+        predictionList.appendChild(card);
+    });
+
+    resultSection.classList.add('show');
+}
+
+function showError(message) {
+    errorSection.textContent = message;
+    errorSection.classList.add('show');
+}
+
+function clearError() {
+    errorSection.textContent = '';
+    errorSection.classList.remove('show');
 }

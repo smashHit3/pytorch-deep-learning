@@ -1,47 +1,65 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Text Classification</title>
-    <link rel="stylesheet" href="/static/css/base.css">
-    <link rel="stylesheet" href="/static/css/nlp.css">
-</head>
-<body>
-    <div class="container">
-        <div class="nav-links">
-            <a href="/">Image Classification</a> | <strong>Text Classification</strong>
-        </div>
+{% extends "base.html" %}
 
-        <h1>NLP Text Classification</h1>
-        <p>Sentiment Analysis with Deep Learning</p>
+{% block title %}AI Classifier - Text{% endblock %}
+{% block nav_nlp_class %}active{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="/static/css/nlp.css">{% endblock %}
 
-        <div class="config-panel">
+{% block content %}
+<section class="page-intro">
+    <span class="eyebrow">Natural language processing</span>
+    <h1>Text classification</h1>
+    <p>Select a model, choose a dataset, and classify free-form text.</p>
+</section>
+
+{% if has_models %}
+<div class="panel">
+    <div class="config-grid">
+        <div class="config-row">
             <label for="model">Model</label>
             <select id="model">
-                <option value="lstm">LSTM</option>
-                <option value="gru">GRU</option>
-                <option value="transformer">Transformer</option>
+                {% for model in available_models %}
+                <option value="{{ model }}">{{ model | upper }}</option>
+                {% endfor %}
             </select>
         </div>
-
-        <textarea id="text" placeholder="Enter movie review text to classify..."></textarea>
-
-        <button class="btn" id="predictBtn" onclick="predict()">Classify</button>
-
-        <div class="loading" id="loading">
-            <div class="spinner"></div>
-            <p>Analyzing...</p>
-        </div>
-
-        <div class="error" id="error"></div>
-
-        <div class="result" id="result">
-            <div class="prediction" id="prediction"></div>
-            <div class="confidence" id="confidence"></div>
+        <div class="config-row">
+            <label for="dataset">Dataset</label>
+            <select id="dataset">
+                {% for dataset_key, dataset_label in available_datasets.items() %}
+                <option value="{{ dataset_key }}" {% if dataset_key == default_dataset %}selected{% endif %}>{{ dataset_label }}</option>
+                {% endfor %}
+            </select>
         </div>
     </div>
 
-    <script src="/static/js/nlp.js"></script>
-</body>
-</html>
+    <textarea id="text" placeholder="Enter text to classify..."></textarea>
+    <button class="btn" id="predictBtn">Classify text</button>
+</div>
+{% else %}
+<div class="empty-state">
+    <h2>No text models found</h2>
+    <p>Add weight files to <code>nlp_sources/results</code> to enable the text classifier.</p>
+</div>
+{% endif %}
+
+<div class="loading" id="loading" aria-live="polite">
+    <div class="spinner"></div>
+    <p>Analyzing text...</p>
+</div>
+
+<div class="error" id="error" role="alert"></div>
+
+<section class="result" id="result" aria-live="polite">
+    <div class="result-header">
+        <div>
+            <p class="result-label">Prediction</p>
+            <h2 class="prediction" id="prediction">Ready for text input</h2>
+        </div>
+        <span class="status-pill status-ready" id="result-model"></span>
+    </div>
+    <p class="confidence" id="confidence"></p>
+    <p class="dataset-note" id="dataset-note"></p>
+</section>
+{% endblock %}
+
+{% block extra_js %}<script src="/static/js/nlp.js"></script>{% endblock %}

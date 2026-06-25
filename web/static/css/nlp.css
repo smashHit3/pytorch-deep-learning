@@ -1,18 +1,26 @@
-/* NLP Page Specific Styles */
 textarea {
-    width: 100%;
-    min-height: 120px;
-    padding: 12px;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 16px;
-    font-family: inherit;
+    min-height: 180px;
     resize: vertical;
-    transition: border-color 0.3s;
-    margin-bottom: 15px;
 }
 
-textarea:focus {
-    outline: none;
-    border-color: #4a90e2;
+.result {
+    border-color: #d6e6f7;
+}
+
+.result.positive {
+    background: linear-gradient(180deg, #f2fcf7 0%, #ebf8f0 100%);
+    border-color: #addabb;
+}
+
+.result.negative {
+    background: linear-gradient(180deg, #fff4f4 0%, #fdecec 100%);
+    border-color: #f2b8b5;
+}
+
+.result.neutral {
+    background: linear-gradient(180deg, #f8fbff 0%, #eff5fb 100%);
+}
+
+.dataset-note {
+    margin-top: 10px;
 }

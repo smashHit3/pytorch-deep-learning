@@ -1,68 +1,63 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Classification</title>
-    <link rel="stylesheet" href="/static/css/base.css">
-    <link rel="stylesheet" href="/static/css/cv.css">
-    <style>
-        #result {
-            border-top: 1px solid #eee;
-            text-align: left;
-        }
-        .prediction-item {
-            display: flex;
-            justify-content: space-between;
-            margin: 0.5rem 0;
-            font-size: 1.1rem;
-        }
-        .top-prediction {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #2d3748;
-            margin-bottom: 1rem;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="nav-links">
-            <strong>Image Classification</strong> | <a href="/nlp">Text Classification</a>
-        </div>
+{% extends "base.html" %}
 
-        <h1>AI Image Classifier</h1>
-        <p>Select a model and upload an image to classify</p>
+{% block title %}AI Classifier - Image{% endblock %}
+{% block nav_cv_class %}active{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="/static/css/cv.css">{% endblock %}
 
-        <div class="config-panel">
-            <label for="model-select">Choose Model:</label>
-            <select id="model-select">
-                {% for model in available_models %}
-                <option value="{{ model }}" {% if model == model_name %}selected{% endif %}>{{ model }}</option>
-                {% endfor %}
-            </select>
-        </div>
+{% block content %}
+<section class="page-intro">
+    <span class="eyebrow">Computer vision</span>
+    <h1>Image classification</h1>
+    <p>Choose an available model, upload an image, and review the top predictions.</p>
+</section>
 
-        <div class="upload-section" onclick="document.getElementById('file-input').click()">
-            <span id="upload-text">Click to upload image</span>
-            <img id="image-preview" src="#" alt="Preview">
-        </div>
-
-        <input type="file" id="file-input" style="display: none;" accept="image/*" onchange="previewImage(this)">
-
-        <button id="predict-btn" class="btn" onclick="uploadImage()" disabled>Classify Image</button>
-
-        <div id="loading" class="loading">
-            <div class="spinner"></div>
-            <p>Analyzing...</p>
-        </div>
-
-        <div id="result" class="result">
-            <div class="top-prediction" id="top-label">...</div>
-            <div id="prediction-list"></div>
-        </div>
+{% if has_models %}
+<div class="panel">
+    <div class="config-row">
+        <label for="model-select">Model</label>
+        <select id="model-select">
+            {% for model in available_models %}
+            <option value="{{ model }}" {% if model == model_name %}selected{% endif %}>{{ model }}</option>
+            {% endfor %}
+        </select>
     </div>
 
-    <script src="/static/js/cv.js"></script>
-</body>
-</html>
+    <label for="file-input" class="upload-section">
+        <span id="upload-text" class="upload-title">Choose an image</span>
+        <span class="upload-subtitle">PNG, JPG, or any browser-supported image format.</span>
+        <img id="image-preview" alt="Selected preview">
+    </label>
+    <input type="file" id="file-input" class="sr-only" accept="image/*">
+
+    <button id="predict-btn" class="btn" disabled>Classify image</button>
+</div>
+{% else %}
+<div class="empty-state">
+    <h2>No image models found</h2>
+    <p>Add weight files to <code>cv_sources/results</code> to enable the image classifier.</p>
+</div>
+{% endif %}
+
+<div id="loading" class="loading" aria-live="polite">
+    <div class="spinner"></div>
+    <p>Analyzing image...</p>
+</div>
+
+<div id="error" class="error" role="alert"></div>
+
+<section id="result" class="result" aria-live="polite">
+    <div class="result-header">
+        <div>
+            <p class="result-label">Top prediction</p>
+            <h2 id="top-label">Ready for an image</h2>
+        </div>
+        <div class="result-summary">
+            <span id="result-model" class="status-pill status-ready"></span>
+            <span id="top-confidence"></span>
+        </div>
+    </div>
+    <div id="prediction-list" class="prediction-list"></div>
+</section>
+{% endblock %}
+
+{% block extra_js %}<script src="/static/js/cv.js"></script>{% endblock %}

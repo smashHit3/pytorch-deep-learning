@@ -1,22 +1,40 @@
-async function predict() {
-    const text = document.getElementById('text').value.trim();
-    const model = document.getElementById('model').value;
+const textInput = document.getElementById('text');
+const modelSelect = document.getElementById('model');
+const datasetSelect = document.getElementById('dataset');
+const predictBtn = document.getElementById('predictBtn');
+const loadingIndicator = document.getElementById('loading');
+const errorBox = document.getElementById('error');
+const resultBox = document.getElementById('result');
+const predictionText = document.getElementById('prediction');
+const confidenceText = document.getElementById('confidence');
+const datasetNote = document.getElementById('dataset-note');
+const resultModelBadge = document.getElementById('result-model');
 
-    document.getElementById('result').classList.remove('show');
-    document.getElementById('error').style.display = 'none';
+if (predictBtn) {
+    predictBtn.addEventListener('click', predict);
+}
+
+async function predict() {
+    const text = textInput.value.trim();
+    const model = modelSelect.value;
+    const dataset = datasetSelect.value;
+
+    resultBox.classList.remove('show', 'positive', 'negative', 'neutral');
+    hideError();
 
     if (!text) {
-        showError('Please enter some text to classify');
+        showError('Enter some text to classify.');
         return;
     }
 
-    document.getElementById('loading').style.display = 'block';
-    document.getElementById('predictBtn').disabled = true;
+    loadingIndicator.style.display = 'block';
+    predictBtn.disabled = true;
 
     try {
         const formData = new FormData();
         formData.append('text', text);
         formData.append('model_type', model);
+        formData.append('dataset', dataset);
 
         const response = await fetch('/nlp/predict', {
             method: 'POST',
@@ -24,40 +42,46 @@ async function predict() {
         });
 
         const data = await response.json();
-
-        if (response.ok) {
-            showResult(data);
-        } else {
-            showError(data.error || 'Prediction failed');
+        if (!response.ok) {
+            showError(data.error || 'Prediction failed.');
+            return;
         }
-    } catch (err) {
-        showError('Network error: ' + err.message);
+
+        showResult(data);
+    } catch (error) {
+        showError(`Network error: ${error.message}`);
     } finally {
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('predictBtn').disabled = false;
+        loadingIndicator.style.display = 'none';
+        predictBtn.disabled = false;
     }
 }
 
 function showResult(data) {
-    const resultEl = document.getElementById('result');
-    const predictionEl = document.getElementById('prediction');
-    const confidenceEl = document.getElementById('confidence');
+    predictionText.textContent = data.prediction;
+    confidenceText.textContent = `Confidence: ${data.confidence}`;
+    resultModelBadge.textContent = data.model_type.toUpperCase();
 
-    predictionEl.textContent = data.prediction;
-    confidenceEl.textContent = `Confidence: ${data.confidence}`;
-
-    resultEl.classList.remove('positive', 'negative');
-    if (data.prediction === 'Positive') {
-        resultEl.classList.add('positive');
+    if (data.dataset === 'imdb') {
+        resultBox.classList.add(data.prediction === 'Positive' ? 'positive' : 'negative');
+        datasetNote.textContent = `Dataset: ${data.dataset_label}`;
     } else {
-        resultEl.classList.add('negative');
+        resultBox.classList.add('neutral');
+        datasetNote.textContent = `Dataset: ${data.dataset_label}`;
     }
 
-    resultEl.classList.add('show');
+    if (data.configured_dataset) {
+        datasetNote.textContent += ' (served with the dataset saved in the model config)';
+    }
+
+    resultBox.classList.add('show');
 }
 
 function showError(message) {
-    const errorEl = document.getElementById('error');
-    errorEl.textContent = message;
-    errorEl.style.display = 'block';
+    errorBox.textContent = message;
+    errorBox.classList.add('show');
+}
+
+function hideError() {
+    errorBox.textContent = '';
+    errorBox.classList.remove('show');
 }

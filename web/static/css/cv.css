@@ -1,54 +1,69 @@
-/* CV Page Specific Styles */
 .upload-section {
-    border: 2px dashed #cbd5e0;
-    padding: 2rem;
-    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    border: 1.5px dashed #9bbce0;
+    border-radius: 18px;
+    background: linear-gradient(180deg, #f9fbff 0%, #f2f7fd 100%);
     cursor: pointer;
-    transition: border-color 0.3s;
-    margin-bottom: 1.5rem;
+    margin-bottom: 18px;
+    padding: 28px 22px;
+    text-align: center;
 }
 
-.upload-section:hover { border-color: #4a90e2; }
+.upload-section:hover {
+    border-color: #60a5fa;
+}
+
+.upload-title {
+    color: #111827;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.upload-subtitle {
+    color: #6b7280;
+}
 
 #image-preview {
-    max-width: 100%;
-    max-height: 300px;
     display: none;
-    margin: 1rem auto;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    max-height: 320px;
+    max-width: 100%;
+    border-radius: 16px;
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
 }
 
-#result {
-    border-top: 1px solid #eee;
-    text-align: left;
+.prediction-list {
+    display: grid;
+    gap: 14px;
 }
 
-.prediction-item {
+.prediction-card {
+    background: white;
+    border: 1px solid #e5edf6;
+    border-radius: 16px;
+    padding: 16px;
+}
+
+.prediction-row {
     display: flex;
     justify-content: space-between;
-    margin: 0.5rem 0;
-    font-size: 1.1rem;
+    gap: 16px;
+    font-weight: 700;
+    margin-bottom: 10px;
 }
 
-.top-prediction {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #2d3748;
-    margin-bottom: 1rem;
-}
-
-.confidence-bar {
-    height: 8px;
-    background: #edf2f7;
-    border-radius: 4px;
+.confidence-track {
+    width: 100%;
+    height: 10px;
+    background: #e8f0f8;
+    border-radius: 999px;
     overflow: hidden;
-    margin-top: 4px;
 }
 
 .confidence-fill {
     height: 100%;
-    background: #4a90e2;
-    width: 0%;
-    transition: width 0.5s ease-out;
+    background: linear-gradient(90deg, #60a5fa 0%, #2563eb 100%);
+    border-radius: 999px;
 }

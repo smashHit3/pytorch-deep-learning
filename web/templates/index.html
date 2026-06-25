@@ -1,77 +1,40 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Classifier - Home</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-    <style>
-        .hero {
-            text-align: center;
-        }
-        .hero h1 {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-            color: #1a1a2e;
-        }
-        .hero p {
-            font-size: 1.1rem;
-            margin-bottom: 2rem;
-        }
-        .cards {
-            display: flex;
-            gap: 20px;
-            margin-top: 2rem;
-        }
-        .card {
-            flex: 1;
-            padding: 2rem;
-            background: #fafafa;
-            border-radius: 12px;
-            border: 2px solid #eee;
-            text-align: center;
-            text-decoration: none;
-            color: inherit;
-            transition: all 0.3s;
-        }
-        .card:hover {
-            border-color: #4a90e2;
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        }
-        .card-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-        }
-        .card h2 {
-            font-size: 1.2rem;
-            margin-bottom: 0.5rem;
-        }
-        .card p {
-            font-size: 0.9rem;
-            margin: 0;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="hero">
-            <h1>AI Classifier</h1>
-            <p>Deep Learning Powered Classification</p>
-        </div>
+{% extends "base.html" %}
 
-        <div class="cards">
-            <a href="/cv" class="card">
-                <div class="card-icon">🖼️</div>
-                <h2>Image Classification</h2>
-                <p>Classify images with CNN models</p>
-            </a>
-            <a href="/nlp" class="card">
-                <div class="card-icon">📝</div>
-                <h2>Text Classification</h2>
-                <p>Sentiment analysis with NLP models</p>
-            </a>
+{% block title %}AI Classifier - Home{% endblock %}
+{% block nav_home_class %}active{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <span class="eyebrow">Interactive model playground</span>
+    <h1>Explore image and text classifiers from one place.</h1>
+    <p class="hero-copy">
+        Switch between computer vision and NLP demos, try available models, and inspect predictions with a cleaner workflow.
+    </p>
+</section>
+
+<section class="card-grid">
+    <a href="/cv" class="feature-card">
+        <span class="feature-kicker">Computer vision</span>
+        <h2>Image classification</h2>
+        <p>Upload an image and compare trained convolutional models.</p>
+        <div class="feature-meta">
+            <span>{{ cv_model_count }} model{% if cv_model_count != 1 %}s{% endif %} ready</span>
+            <span class="status-pill {% if cv_ready %}status-ready{% else %}status-empty{% endif %}">
+                {% if cv_ready %}Available{% else %}Unavailable{% endif %}
+            </span>
         </div>
-    </div>
-</body>
-</html>
+    </a>
+
+    <a href="/nlp" class="feature-card">
+        <span class="feature-kicker">Natural language processing</span>
+        <h2>Text classification</h2>
+        <p>Run sentiment or topic predictions from the models currently installed.</p>
+        <div class="feature-meta">
+            <span>{{ nlp_model_count }} model{% if nlp_model_count != 1 %}s{% endif %} ready</span>
+            <span class="status-pill {% if nlp_ready %}status-ready{% else %}status-empty{% endif %}">
+                {% if nlp_ready %}Available{% else %}Unavailable{% endif %}
+            </span>
+        </div>
+    </a>
+</section>
+{% endblock %}

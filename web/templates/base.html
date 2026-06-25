@@ -8,12 +8,22 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <div class="container">
-        <div class="nav-links">
-            {% block nav %}{% endblock %}
-        </div>
+    <div class="page-shell">
+        <header class="site-header">
+            <div>
+                <a href="/" class="site-title">AI Classifier</a>
+                <p class="site-subtitle">Deep learning demos for computer vision and NLP</p>
+            </div>
+            <nav class="site-nav" aria-label="Primary">
+                <a href="/" class="{% block nav_home_class %}{% endblock %}">Home</a>
+                <a href="/cv" class="{% block nav_cv_class %}{% endblock %}">Image</a>
+                <a href="/nlp" class="{% block nav_nlp_class %}{% endblock %}">Text</a>
+            </nav>
+        </header>
 
-        {% block content %}{% endblock %}
+        <main class="container">
+            {% block content %}{% endblock %}
+        </main>
     </div>
 
     {% block extra_js %}{% endblock %}
