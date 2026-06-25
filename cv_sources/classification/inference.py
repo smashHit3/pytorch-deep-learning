@@ -1,10 +1,11 @@
 # -----------------------------------------------------------------------------
 # Add project root to system path
 # -----------------------------------------------------------------------------
+import json
 import sys
 import time
 from pathlib import Path
-from typing import List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT.parent) not in sys.path:
@@ -42,6 +43,29 @@ LABELS = {
     dogs_vs_cats.DATASET_NAME_DOGS_VS_CATS: ["Cat", "Dog"]
 }
 
+DATASET_NUM_CLASSES = {
+    fashion_mnist.DATASET_NAME_FASHION_MNIST: len(LABELS[fashion_mnist.DATASET_NAME_FASHION_MNIST]),
+    dogs_vs_cats.DATASET_NAME_DOGS_VS_CATS: len(LABELS[dogs_vs_cats.DATASET_NAME_DOGS_VS_CATS]),
+}
+
+MODEL_OUTPUT_WEIGHT_KEYS = {
+    "alexnet": "classifier.6.weight",
+    "googlenet": "fc.weight",
+    "vgg11": "classifier.6.weight",
+    "vgg13": "classifier.6.weight",
+    "vgg16": "classifier.6.weight",
+    "vgg19": "classifier.6.weight",
+    "resnet18": "fc.weight",
+    "resnet34": "fc.weight",
+    "resnet50": "fc.weight",
+    "densenet121": "fc.weight",
+    "densenet169": "fc.weight",
+    "densenet201": "fc.weight",
+    "mobilenet_1_0": "classifier.1.weight",
+    "mobilenet_0_5": "classifier.1.weight",
+    "mobilenet_0_75": "classifier.1.weight",
+}
+
 # 1. Record original default weight path (for judgment)
 ORIG_DEFAULT_WEIGHT_PATH = PROJECT_ROOT / "results" / "default_model.pth"
 
@@ -60,6 +84,80 @@ def auto_update_model_path(args) -> None:
         print(f"[Auto Update] Default weight path changed to: {new_weight_path.resolve()}")
 
 
+def load_model_metadata(weight_path: Path) -> Dict[str, Any]:
+    """Load optional model metadata saved alongside a checkpoint."""
+    metadata_path = weight_path.with_suffix(".json")
+    if not metadata_path.exists():
+        return {}
+
+    with open(metadata_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_checkpoint(weight_path: Path, device: torch.device) -> Dict[str, Any]:
+    """Load model checkpoint or state_dict."""
+    checkpoint = torch.load(weight_path, map_location=device)
+    if isinstance(checkpoint, dict) and "state_dict" in checkpoint:
+        return checkpoint["state_dict"]
+    return checkpoint
+
+
+def infer_num_classes_from_state_dict(model_name: str, state_dict: Dict[str, Any]) -> int:
+    """Infer the output class count from the classifier layer in a state dict."""
+    weight_key = MODEL_OUTPUT_WEIGHT_KEYS.get(model_name)
+    if weight_key is None or weight_key not in state_dict:
+        raise KeyError(f"Unable to infer class count for model '{model_name}' from checkpoint.")
+    return int(state_dict[weight_key].shape[0])
+
+
+def resolve_inference_settings(args) -> Dict[str, Any]:
+    """Resolve dataset, class count, labels, and checkpoint metadata for inference."""
+    metadata = load_model_metadata(args.model_path)
+    checkpoint_dataset = metadata.get("dataset")
+
+    if args.dataset and checkpoint_dataset and args.dataset != checkpoint_dataset:
+        raise ValueError(
+            f"Checkpoint dataset mismatch: requested '{args.dataset}' but weights were trained for '{checkpoint_dataset}'."
+        )
+
+    resolved_dataset = args.dataset or checkpoint_dataset
+    state_dict = load_checkpoint(args.model_path, torch.device("cpu"))
+    inferred_num_classes = infer_num_classes_from_state_dict(args.model, state_dict)
+
+    if resolved_dataset in DATASET_NUM_CLASSES and DATASET_NUM_CLASSES[resolved_dataset] != inferred_num_classes:
+        raise ValueError(
+            f"Dataset '{resolved_dataset}' expects {DATASET_NUM_CLASSES[resolved_dataset]} classes, "
+            f"but checkpoint outputs {inferred_num_classes}."
+        )
+
+    if metadata.get("num_classes") is not None and int(metadata["num_classes"]) != inferred_num_classes:
+        raise ValueError(
+            f"Checkpoint metadata mismatch: metadata num_classes={metadata['num_classes']} "
+            f"but weights output {inferred_num_classes} classes."
+        )
+
+    if resolved_dataset in DATASET_NUM_CLASSES:
+        num_classes = DATASET_NUM_CLASSES[resolved_dataset]
+        class_names = LABELS[resolved_dataset]
+    else:
+        num_classes = inferred_num_classes
+        class_names = args.class_names or [f"Class_{idx}" for idx in range(num_classes)]
+
+    if args.class_names and len(args.class_names) != num_classes:
+        raise ValueError(f"Expected {num_classes} class names, got {len(args.class_names)}.")
+
+    if args.class_names:
+        class_names = args.class_names
+
+    return {
+        "dataset": resolved_dataset,
+        "num_classes": num_classes,
+        "class_names": class_names,
+        "state_dict": state_dict,
+        "metadata": metadata,
+    }
+
+
 def set_random_seed(seed: int) -> None:
     """Fix random seed for reproducible inference results"""
     torch.manual_seed(seed)
@@ -75,8 +173,6 @@ def validate_args(args) -> None:
         raise FileNotFoundError(f"Input image not found: {args.image}")
     if not args.model_path.is_file():
         raise FileNotFoundError(f"Model weight file not found: {args.model_path}")
-    if args.top_k <= 0 or args.top_k > args.num_classes:
-        raise ValueError(f"top-k must be between 1 and {args.num_classes}")
     if args.resize <= 0 or args.crop <= 0:
         raise ValueError("Image resize/crop size must be positive integer")
 
@@ -100,7 +196,7 @@ def parse_args() -> object:
     parser.add_argument("--model-path", type=Path,
                         default=ORIG_DEFAULT_WEIGHT_PATH,
                         help="Path to trained model weights (.pth)")
-    parser.add_argument("--num-classes", type=int, default=2, help="Total number of classification categories")
+    parser.add_argument("--num-classes", type=int, default=None, help="Total number of classification categories")
 
     # 4. Image Preprocessing Config
     parser.add_argument("--resize", type=int, default=DEFAULT_RESIZE, help="Image resize size before center crop")
@@ -178,21 +274,26 @@ def preprocess_image(
 
 def load_model(
     model_name: str,
-    weight_path: Path,
+    weight_path: Optional[Path],
     num_classes: int,
     device: torch.device,
+    state_dict: Optional[Dict[str, Any]] = None,
     use_fp16: bool = False
 ) -> torch.nn.Module:
-    """Load model architecture using build_model and load weights"""
+    """Load model architecture and weights, validating the checkpoint class count."""
+    if state_dict is None:
+        if weight_path is None:
+            raise ValueError("weight_path is required when state_dict is not provided.")
+        state_dict = load_checkpoint(weight_path, device)
+
+    inferred_num_classes = infer_num_classes_from_state_dict(model_name, state_dict)
+    if inferred_num_classes != num_classes:
+        raise ValueError(
+            f"Checkpoint for model '{model_name}' outputs {inferred_num_classes} classes, not {num_classes}."
+        )
+
     # Use build_model from train.py to ensure consistency
     model = build_model(model_name, num_classes, init_weights=False)
-
-    # Load state dict (support both raw state_dict and checkpoint wrapper)
-    checkpoint = torch.load(weight_path, map_location=device)
-    if isinstance(checkpoint, dict) and "state_dict" in checkpoint:
-        state_dict = checkpoint["state_dict"]
-    else:
-        state_dict = checkpoint
     model.load_state_dict(state_dict)
 
     model = model.to(device)
@@ -232,6 +333,13 @@ def main():
 
         # Validate all arguments
         validate_args(args)
+        resolved = resolve_inference_settings(args)
+        if args.num_classes is not None and args.num_classes != resolved["num_classes"]:
+            raise ValueError(
+                f"Requested --num-classes {args.num_classes}, but checkpoint requires {resolved['num_classes']}."
+            )
+        if args.top_k <= 0 or args.top_k > resolved["num_classes"]:
+            raise ValueError(f"top-k must be between 1 and {resolved['num_classes']}")
         # Set random seed
         set_random_seed(args.seed)
         # Select device
@@ -239,16 +347,16 @@ def main():
 
         print(f"==================== Inference Config ====================")
         print(f"Image Path: {args.image.resolve()}")
-        print(f"Dataset: {args.dataset if args.dataset else 'Manual'}")
+        print(f"Dataset: {resolved['dataset'] if resolved['dataset'] else 'Manual'}")
         print(f"Model: {args.model} | Weights: {args.model_path.resolve()}")
         print(f"Device: {device.type.upper()}")
-        print(f"Top-K: {args.top_k} | Classes: {args.num_classes}")
+        print(f"Top-K: {args.top_k} | Classes: {resolved['num_classes']}")
         print("==========================================================\n")
 
         # Preprocess image
         img_tensor = preprocess_image(
             img_path=args.image,
-            dataset=args.dataset,
+            dataset=resolved["dataset"],
             resize_size=args.resize,
             crop_size=args.crop,
             mean=args.mean,
@@ -260,8 +368,9 @@ def main():
         model = load_model(
             model_name=args.model,
             weight_path=args.model_path,
-            num_classes=args.num_classes,
+            num_classes=resolved["num_classes"],
             device=device,
+            state_dict=resolved["state_dict"],
             use_fp16=args.fp16
         )
 
@@ -271,12 +380,7 @@ def main():
         infer_latency_ms = (time.perf_counter() - start_time) * 1000
 
         # Determine class names
-        if args.class_names:
-            final_class_names = args.class_names
-        elif args.dataset in LABELS:
-            final_class_names = LABELS[args.dataset]
-        else:
-            final_class_names = DEFAULT_CLASS_NAMES
+        final_class_names = resolved["class_names"]
 
         # Print results
         print(f"⏱️  Inference Latency: {infer_latency_ms:.2f} ms")

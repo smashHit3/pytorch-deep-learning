@@ -1,6 +1,7 @@
 # -----------------------------------------------------------------------------
 # Add project root to system path
 # -----------------------------------------------------------------------------
+import json
 import sys
 from pathlib import Path
 
@@ -73,7 +74,7 @@ def parse_args():
                         help="Select CNN model (AlexNet as default)")
     parser.add_argument("--init-weights", action="store_true", default=True,
                         help="Initialize model weights")
-    parser.add_argument("--no-init-weights", dest="init-weights", action="store_false",
+    parser.add_argument("--no-init-weights", dest="init_weights", action="store_false",
                         help="Disable weight initialization")
 
     # ---------------------- Optimizer & AlexNet Hyperparams ----------------------
@@ -125,6 +126,16 @@ def auto_update_save_path(args):
         new_save_path = PROJECT_ROOT / "results" / model_filename
         args.save_path = new_save_path
         print(f"[Auto Update] Default save path changed to: {new_save_path.resolve()}")
+
+
+def build_model_metadata(args, num_classes: int) -> dict:
+    """Build metadata saved alongside trained weights for safer inference."""
+    return {
+        "model": args.model,
+        "dataset": args.dataset,
+        "num_classes": num_classes,
+        "img_size": args.img_size,
+    }
 
 
 def auto_set_model_hyperparams(args):
@@ -308,11 +319,17 @@ def train_loop(model, device, train_loader, val_loader, optimizer, scheduler, cr
             scheduler.step()
 
 
-def save_weights(model: nn.Module, save_path: Path):
-    """Save model state dict"""
+def save_weights(model: nn.Module, save_path: Path, metadata: dict | None = None):
+    """Save model state dict and optional metadata."""
     save_path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(model.state_dict(), save_path)
     print(f"\n✅ Model weights saved to: {save_path.resolve()}")
+
+    if metadata is not None:
+        config_path = save_path.with_suffix(".json")
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(metadata, f, indent=2, sort_keys=True)
+        print(f"✅ Model metadata saved to: {config_path.resolve()}")
 
 
 def main():
@@ -353,7 +370,7 @@ def main():
     train_loop(model, device, train_loader, val_loader, optimizer, scheduler, criterion, args.epochs)
 
     # Save model
-    save_weights(model, args.save_path)
+    save_weights(model, args.save_path, metadata=build_model_metadata(args, num_classes))
 
 
 if __name__ == "__main__":
