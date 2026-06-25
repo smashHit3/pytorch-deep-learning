@@ -1,6 +1,7 @@
 import sys
+import logging
 from pathlib import Path
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Optional
 
 # Add project root to system path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -15,6 +16,10 @@ from fastapi.templating import Jinja2Templates
 from PIL import Image
 import io
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # Import logic from our inference module
 from cv_sources.classification.inference import (
     load_model,
@@ -28,9 +33,8 @@ from cv_sources.classification.inference import (
 from cv_sources.data_processor import dogs_vs_cats, fashion_mnist
 from cv_sources.classification.train import MODEL_FILE_MAP
 
-# NLP imports
-from nlp_sources.data_processor import text_data
-from nlp_sources.data_processor.base import Vocabulary
+# NLP imports - use the improved NLPInferenceEngine
+from nlp_sources.inference import NLPInferenceEngine, get_class_names
 from nlp_sources.models import lstm, gru, transformer
 
 app = FastAPI()
@@ -52,8 +56,8 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Model Cache: stores loaded models as {model_name: model_object}
 model_cache: Dict[str, torch.nn.Module] = {}
 
-# NLP Model Cache: stores (model, vocab, device, num_classes)
-nlp_cache: Dict[str, tuple] = {}
+# NLP Model Cache: stores NLPInferenceEngine instances
+nlp_cache: Dict[str, NLPInferenceEngine] = {}
 
 # -------------------------- Helper Functions --------------------------
 def get_model(model_name: str):
@@ -116,64 +120,50 @@ def get_transforms(dataset_name: str):
 NLP_RESULTS_DIR = PROJECT_ROOT / "nlp_sources" / "results"
 
 def get_nlp_model(model_type: str, dataset: str = "imdb", embedding_dim: int = 128, hidden_dim: int = 256):
+    """Load NLP model using the improved NLPInferenceEngine"""
     cache_key = (model_type, dataset, embedding_dim, hidden_dim)
     if cache_key in nlp_cache:
         return nlp_cache[cache_key]
 
     # Load vocabulary from file (no dataset loading needed)
+    from nlp_sources.data_processor.base import Vocabulary
+    from nlp_sources.data_processor import text_data
+    
     vocab_path = NLP_RESULTS_DIR / f"vocab_{dataset}.json"
     if vocab_path.exists():
         vocab = Vocabulary.load(str(vocab_path))
     else:
         # Fallback: load from dataset if vocab file doesn't exist
-        _, _, vocab, _ = text_data.load_data(dataset, batch_size=32, max_seq_len=256)
+        logger.info(f"Vocab file not found at {vocab_path}, loading from dataset...")
+        _, _, vocab, num_classes = text_data.load_data(dataset, batch_size=32, max_seq_len=256)
+    num_classes = 2 if dataset == "imdb" else 4  # AG_NEWS has 4 classes
 
-    num_classes = 2  # IMDB has 2 classes
-
-    # Build model
-    if model_type == lstm.MODEL_TYPE_LSTM:
-        model = lstm.lstm_classifier(
-            vocab_size=vocab.size,
+    # Build model using NLPInferenceEngine
+    model_path = NLP_RESULTS_DIR / f"{model_type}.pth"
+    
+    try:
+        engine = NLPInferenceEngine(
+            model_type=model_type,
+            model_path=model_path,
+            vocab=vocab,
+            num_classes=num_classes,
             embedding_dim=embedding_dim,
             hidden_dim=hidden_dim,
-            num_classes=num_classes
+            device="cuda" if torch.cuda.is_available() else "cpu",
+            fp16=False  # Disable FP16 for web inference by default
         )
-    elif model_type == gru.MODEL_TYPE_GRU:
-        model = gru.gru_classifier(
-            vocab_size=vocab.size,
-            embedding_dim=embedding_dim,
-            hidden_dim=hidden_dim,
-            num_classes=num_classes
-        )
-    elif model_type == transformer.MODEL_TYPE_TRANSFORMER:
-        model = transformer.transformer_classifier(
-            vocab_size=vocab.size,
-            embedding_dim=embedding_dim,
-            hidden_dim=hidden_dim,
-            num_classes=num_classes
-        )
-    else:
-        raise ValueError(f"Unknown model type: {model_type}")
-
-    model = model.to(DEVICE)
-    model.eval()
-
-    nlp_cache[cache_key] = (model, vocab, DEVICE, num_classes)
-    return nlp_cache[cache_key]
+        nlp_cache[cache_key] = engine
+        logger.info(f"NLP model {model_type} loaded and cached!")
+        return engine
+    except Exception as e:
+        logger.error(f"Failed to load NLP model {model_type}: {e}")
+        raise
 
 
-def nlp_predict(model, text: str, vocab, max_seq_len: int = 256):
-    """Predict sentiment for text"""
-    tokens = vocab.tokenize(text)
-    indexed = vocab.encode(tokens, max_seq_len)
-    input_tensor = torch.tensor(indexed, dtype=torch.long).unsqueeze(0).to(DEVICE)
-
-    with torch.no_grad():
-        output = model(input_tensor)
-        probs = torch.softmax(output, dim=1)
-        confidence, pred = torch.max(probs, dim=1)
-
-    return pred.item(), confidence.item()
+def nlp_predict(engine: NLPInferenceEngine, text: str, max_seq_len: int = 256):
+    """Predict sentiment for text using NLPInferenceEngine"""
+    preds, confidences = engine.predict_batch([text], max_seq_len)
+    return preds[0], confidences[0][preds[0]]
 
 # -------------------------- Endpoints --------------------------
 
@@ -255,26 +245,29 @@ async def nlp_page(request: Request):
 @app.post("/nlp/predict")
 async def nlp_predict_endpoint(
     text: str = Form(...),
-    model_type: str = Form("lstm")
+    model_type: str = Form("lstm"),
+    dataset: str = Form("imdb")
 ):
-    """Handle text classification request"""
+    """Handle text classification request using NLPInferenceEngine"""
     if not text or not text.strip():
         return {"error": "No text provided"}
 
     try:
-        model, vocab, _, num_classes = get_nlp_model(model_type)
-        pred, confidence = nlp_predict(model, text, vocab)
+        engine = get_nlp_model(model_type, dataset)
+        pred, confidence = nlp_predict(engine, text)
 
-        # Class labels for IMDB
-        class_names = ["Negative", "Positive"]
+        # Get class names based on dataset
+        class_names = get_class_names(dataset)
 
         return {
             "prediction": class_names[pred],
             "class_id": pred,
             "confidence": f"{confidence * 100:.2f}%",
-            "confidence_raw": confidence
+            "confidence_raw": confidence,
+            "dataset": dataset
         }
     except Exception as e:
+        logger.error(f"NLP prediction failed: {e}")
         return {"error": str(e)}
 
 
