@@ -7,9 +7,9 @@ MobileNet implementation
 import torch
 import torch.nn as nn
 
-MODEL_TYPE_MOBILENET_1_0 = "mobilenet_1_0"
-MODEL_TYPE_MOBILENET_0_5 = "mobilenet_0_5"
-MODEL_TYPE_MOBILENET_0_75 = "mobilenet_0_75"
+MODEL_TYPE_MOBILENET_X1_0 = "mobilenet_x1_0"
+MODEL_TYPE_MOBILENET_X0_5 = "mobilenet_x0_5"
+MODEL_TYPE_MOBILENET_X0_75 = "mobilenet_x0_75"
 
 class DepthwiseSeparableConv(nn.Module):
     """
@@ -70,7 +70,7 @@ class MobileNet(nn.Module):
         # First layer: standard convolution
         first_out = int(32 * width_multiplier)
         self.features = nn.Sequential(
-            nn.Conv2d(3, first_out, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.Conv2d(3, first_out, kernel_size=3, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(first_out),
             nn.ReLU(inplace=True)
         )
@@ -119,16 +119,16 @@ class MobileNet(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
 
-def mobilenet_1_0(num_classes=1000, init_weights=True, **kwargs):
+def mobilenet_x1_0(num_classes=1000, init_weights=True, **kwargs):
     """MobileNetV1 model with 1.0 width multiplier (full size)"""
     return MobileNet(num_classes=num_classes, width_multiplier=1.0, init_weights=init_weights)
 
 
-def mobilenet_0_5(num_classes=1000, init_weights=True, **kwargs):
+def mobilenet_x0_5(num_classes=1000, init_weights=True, **kwargs):
     """MobileNet with 0.5 width multiplier (smaller, faster)"""
     return MobileNet(num_classes=num_classes, width_multiplier=0.5, init_weights=init_weights)
 
 
-def mobilenet_0_75(num_classes=1000, init_weights=True, **kwargs):
+def mobilenet_x0_75(num_classes=1000, init_weights=True, **kwargs):
     """MobileNet with 0.75 width multiplier"""
     return MobileNet(num_classes=num_classes, width_multiplier=0.75, init_weights=init_weights)

@@ -35,9 +35,9 @@ MODEL_FILE_MAP = {
     densenet.MODEL_TYPE_DENSENET121: "densenet121.pth",
     densenet.MODEL_TYPE_DENSENET169: "densenet169.pth",
     densenet.MODEL_TYPE_DENSENET201: "densenet201.pth",
-    mobilenet.MODEL_TYPE_MOBILENET_1_0: "mobilenet_1_0.pth",
-    mobilenet.MODEL_TYPE_MOBILENET_0_5: "mobilenet_0_5.pth",
-    mobilenet.MODEL_TYPE_MOBILENET_0_75: "mobilenet_0_75.pth",
+    mobilenet.MODEL_TYPE_MOBILENET_X1_0: "mobilenet_1_0.pth",
+    mobilenet.MODEL_TYPE_MOBILENET_X0_5: "mobilenet_0_5.pth",
+    mobilenet.MODEL_TYPE_MOBILENET_X0_75: "mobilenet_0_75.pth",
 }
 # Original default save path (for judgment)
 ORIG_DEFAULT_SAVE_PATH = PROJECT_ROOT / "results" / "default_model.pth"
@@ -70,7 +70,7 @@ def parse_args():
                                  vgg.MODEL_TYPE_VGG16, vgg.MODEL_TYPE_VGG19,
                                  resnet.MODEL_TYPE_RESNET18, resnet.MODEL_TYPE_RESNET34, resnet.MODEL_TYPE_RESNET50,
                                  densenet.MODEL_TYPE_DENSENET121, densenet.MODEL_TYPE_DENSENET169, densenet.MODEL_TYPE_DENSENET201,
-                                 mobilenet.MODEL_TYPE_MOBILENET_1_0, mobilenet.MODEL_TYPE_MOBILENET_0_5, mobilenet.MODEL_TYPE_MOBILENET_0_75],
+                                 mobilenet.MODEL_TYPE_MOBILENET_X1_0, mobilenet.MODEL_TYPE_MOBILENET_X0_5, mobilenet.MODEL_TYPE_MOBILENET_X0_75],
                         help="Select CNN model (AlexNet as default)")
     parser.add_argument("--init-weights", action="store_true", default=True,
                         help="Initialize model weights")
@@ -157,9 +157,9 @@ def auto_set_model_hyperparams(args):
         densenet.MODEL_TYPE_DENSENET121: (0.1, 0.9, 1e-4, "sgd", 30, 0.1),
         densenet.MODEL_TYPE_DENSENET169: (0.1, 0.9, 1e-4, "sgd", 30, 0.1),
         densenet.MODEL_TYPE_DENSENET201: (0.1, 0.9, 1e-4, "sgd", 30, 0.1),
-        mobilenet.MODEL_TYPE_MOBILENET_1_0: (0.01, 0.9, 1e-4, "sgd", 15, 0.1),
-        mobilenet.MODEL_TYPE_MOBILENET_0_5: (0.01, 0.9, 1e-4, "sgd", 15, 0.1),
-        mobilenet.MODEL_TYPE_MOBILENET_0_75: (0.01, 0.9, 1e-4, "sgd", 15, 0.1),
+        mobilenet.MODEL_TYPE_MOBILENET_X1_0: (0.01, 0.9, 1e-4, "sgd", 15, 0.1),
+        mobilenet.MODEL_TYPE_MOBILENET_X0_5: (0.01, 0.9, 1e-4, "sgd", 15, 0.1),
+        mobilenet.MODEL_TYPE_MOBILENET_X0_75: (0.01, 0.9, 1e-4, "sgd", 15, 0.1),
     }
 
     # Get defaults for the current model, or use a general fallback
@@ -230,9 +230,9 @@ def build_model(model_type: str, num_classes: int, init_weights: bool):
         densenet.MODEL_TYPE_DENSENET121: lambda: densenet.densenet121(num_classes=num_classes, init_weights=init_weights),
         densenet.MODEL_TYPE_DENSENET169: lambda: densenet.densenet169(num_classes=num_classes, init_weights=init_weights),
         densenet.MODEL_TYPE_DENSENET201: lambda: densenet.densenet201(num_classes=num_classes, init_weights=init_weights),
-        mobilenet.MODEL_TYPE_MOBILENET_1_0: lambda: mobilenet.mobilenet_1_0(num_classes=num_classes, init_weights=init_weights),
-        mobilenet.MODEL_TYPE_MOBILENET_0_5: lambda: mobilenet.mobilenet_0_5(num_classes=num_classes, init_weights=init_weights),
-        mobilenet.MODEL_TYPE_MOBILENET_0_75: lambda: mobilenet.mobilenet_0_75(num_classes=num_classes, init_weights=init_weights),
+        mobilenet.MODEL_TYPE_MOBILENET_X1_0: lambda: mobilenet.mobilenet_x1_0(num_classes=num_classes, init_weights=init_weights),
+        mobilenet.MODEL_TYPE_MOBILENET_X0_5: lambda: mobilenet.mobilenet_x0_5(num_classes=num_classes, init_weights=init_weights),
+        mobilenet.MODEL_TYPE_MOBILENET_X0_75: lambda: mobilenet.mobilenet_x0_75(num_classes=num_classes, init_weights=init_weights),
     }
     return model_map[model_type]()
 

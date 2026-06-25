@@ -34,7 +34,7 @@ pytorch-deep-learning/
 | GoogLeNet | googlenet |
 | ResNet | resnet18, resnet34, resnet50 |
 | DenseNet | densenet121, densenet169, densenet201 |
-| MobileNetV1 | mobilenet_1_0, mobilenet_0_75, mobilenet_0_5 |
+| MobileNetV1 | mobilenet_x1_0, mobilenet_x0_75, mobilenet_x0_5 |
 
 ## Quick Start
 
@@ -42,7 +42,7 @@ pytorch-deep-learning/
 
 ```bash
 cd cv_sources/classification
-python train.py --model mobilenet_1_0 --dataset dogs_vs_cats --epochs 10
+python train.py --model mobilenet_x1_0 --dataset dogs_vs_cats --epochs 10
 ```
 
 ### Train all CV models (with skip if weights exist)

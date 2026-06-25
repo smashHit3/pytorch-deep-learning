@@ -61,9 +61,9 @@ MODEL_OUTPUT_WEIGHT_KEYS = {
     "densenet121": "fc.weight",
     "densenet169": "fc.weight",
     "densenet201": "fc.weight",
-    "mobilenet_1_0": "classifier.1.weight",
-    "mobilenet_0_5": "classifier.1.weight",
-    "mobilenet_0_75": "classifier.1.weight",
+    "mobilenet_x1_0": "classifier.1.weight",
+    "mobilenet_x0_5": "classifier.1.weight",
+    "mobilenet_x0_75": "classifier.1.weight",
 }
 
 # 1. Record original default weight path (for judgment)

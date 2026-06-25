@@ -43,7 +43,7 @@ class Inception(nn.Module):
 
 
 class GoogleNet(nn.Module):
-    def __init__(self, num_classes=10, init_weights=False):
+    def __init__(self, num_classes=1000, init_weights=False):
         super(GoogleNet, self).__init__()
         self.conv1 = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3),
@@ -105,6 +105,6 @@ class GoogleNet(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
 
-def googlenet(num_classes=10, init_weights=True, **kwargs):
+def googlenet(num_classes=1000, init_weights=True, **kwargs):
     """GoogleNet model"""
     return GoogleNet(num_classes=num_classes, init_weights=init_weights)

@@ -25,9 +25,9 @@ declare -A model_weight_map=(
     ["densenet121"]="densenet121.pth"
     ["densenet169"]="densenet169.pth"
     ["densenet201"]="densenet201.pth"
-    ["mobilenet_1_0"]="mobilenet_1_0.pth"
-    ["mobilenet_0_5"]="mobilenet_0_5.pth"
-    ["mobilenet_0_75"]="mobilenet_0_75.pth"
+    ["mobilenet_x1_0"]="mobilenet_1_0.pth"
+    ["mobilenet_x0_5"]="mobilenet_0_5.pth"
+    ["mobilenet_x0_75"]="mobilenet_0_75.pth"
 )
 
 dataset="dogs_vs_cats"
