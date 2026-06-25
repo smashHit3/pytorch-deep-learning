@@ -58,6 +58,6 @@ class AlexNet(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
 
-def alexnet(num_classes=1000, dropout=0.5, init_weights=True, **kwargs):
+def create_alexnet(num_classes=1000, dropout=0.5, init_weights=True, **kwargs):
     """AlexNet model"""
     return AlexNet(num_classes=num_classes, dropout=dropout, init_weights=init_weights)

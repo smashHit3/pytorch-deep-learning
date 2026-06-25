@@ -68,18 +68,18 @@ cfgs = {
     'E': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
 }
 
-def vgg11(**kwargs):
+def create_vgg11(**kwargs):
     """VGG 11-layer model (configuration "A")"""
     return VGG(make_layers(cfgs['A']), **kwargs)
 
-def vgg13(**kwargs):
+def create_vgg13(**kwargs):
     """VGG 13-layer model (configuration "B")"""
     return VGG(make_layers(cfgs['B']), **kwargs)
 
-def vgg16(**kwargs):
+def create_vgg16(**kwargs):
     """VGG 16-layer model (configuration "D")"""
     return VGG(make_layers(cfgs['D']), **kwargs)
 
-def vgg19(**kwargs):
+def create_vgg19(**kwargs):
     """VGG 19-layer model (configuration "E")"""
     return VGG(make_layers(cfgs['E']), **kwargs)

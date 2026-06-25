@@ -18,7 +18,13 @@ from argparse import ArgumentParser
 
 # Import custom modules
 from cv_sources.data_processor import fashion_mnist, dogs_vs_cats
-from cv_sources.models import alexnet, googlenet, vgg, resnet, densenet, mobilenet
+from cv_sources.models import alexnet, densenet, googlenet, mobilenet, resnet, vgg
+from cv_sources.models.alexnet import create_alexnet
+from cv_sources.models.densenet import create_densenet121, create_densenet169, create_densenet201
+from cv_sources.models.googlenet import create_googlenet
+from cv_sources.models.mobilenet import create_mobilenet_x0_5, create_mobilenet_x0_75, create_mobilenet_x1_0
+from cv_sources.models.resnet import create_resnet18, create_resnet34, create_resnet50
+from cv_sources.models.vgg import create_vgg11, create_vgg13, create_vgg16, create_vgg19
 
 # ---------------- Global Constant: Model -> Save Filename Mapping ----------------
 # Match model type to weight file name for auto path update
@@ -218,21 +224,21 @@ def load_dataset(args):
 def build_model(model_type: str, num_classes: int, init_weights: bool):
     """Build model by parameter"""
     model_map = {
-        alexnet.MODEL_TYPE_ALEXNET: lambda: alexnet.alexnet(num_classes=num_classes, init_weights=init_weights),
-        googlenet.MODEL_TYPE_GOOGLENET: lambda: googlenet.googlenet(num_classes=num_classes, init_weights=init_weights),
-        vgg.MODEL_TYPE_VGG11: lambda: vgg.vgg11(num_classes=num_classes, init_weights=init_weights),
-        vgg.MODEL_TYPE_VGG13: lambda: vgg.vgg13(num_classes=num_classes, init_weights=init_weights),
-        vgg.MODEL_TYPE_VGG16: lambda: vgg.vgg16(num_classes=num_classes, init_weights=init_weights),
-        vgg.MODEL_TYPE_VGG19: lambda: vgg.vgg19(num_classes=num_classes, init_weights=init_weights),
-        resnet.MODEL_TYPE_RESNET18: lambda: resnet.resnet18(num_classes=num_classes, init_weights=init_weights),
-        resnet.MODEL_TYPE_RESNET34: lambda: resnet.resnet34(num_classes=num_classes, init_weights=init_weights),
-        resnet.MODEL_TYPE_RESNET50: lambda: resnet.resnet50(num_classes=num_classes, init_weights=init_weights),
-        densenet.MODEL_TYPE_DENSENET121: lambda: densenet.densenet121(num_classes=num_classes, init_weights=init_weights),
-        densenet.MODEL_TYPE_DENSENET169: lambda: densenet.densenet169(num_classes=num_classes, init_weights=init_weights),
-        densenet.MODEL_TYPE_DENSENET201: lambda: densenet.densenet201(num_classes=num_classes, init_weights=init_weights),
-        mobilenet.MODEL_TYPE_MOBILENET_X1_0: lambda: mobilenet.mobilenet_x1_0(num_classes=num_classes, init_weights=init_weights),
-        mobilenet.MODEL_TYPE_MOBILENET_X0_5: lambda: mobilenet.mobilenet_x0_5(num_classes=num_classes, init_weights=init_weights),
-        mobilenet.MODEL_TYPE_MOBILENET_X0_75: lambda: mobilenet.mobilenet_x0_75(num_classes=num_classes, init_weights=init_weights),
+        alexnet.MODEL_TYPE_ALEXNET: lambda: create_alexnet(num_classes=num_classes, init_weights=init_weights),
+        googlenet.MODEL_TYPE_GOOGLENET: lambda: create_googlenet(num_classes=num_classes, init_weights=init_weights),
+        vgg.MODEL_TYPE_VGG11: lambda: create_vgg11(num_classes=num_classes, init_weights=init_weights),
+        vgg.MODEL_TYPE_VGG13: lambda: create_vgg13(num_classes=num_classes, init_weights=init_weights),
+        vgg.MODEL_TYPE_VGG16: lambda: create_vgg16(num_classes=num_classes, init_weights=init_weights),
+        vgg.MODEL_TYPE_VGG19: lambda: create_vgg19(num_classes=num_classes, init_weights=init_weights),
+        resnet.MODEL_TYPE_RESNET18: lambda: create_resnet18(num_classes=num_classes, init_weights=init_weights),
+        resnet.MODEL_TYPE_RESNET34: lambda: create_resnet34(num_classes=num_classes, init_weights=init_weights),
+        resnet.MODEL_TYPE_RESNET50: lambda: create_resnet50(num_classes=num_classes, init_weights=init_weights),
+        densenet.MODEL_TYPE_DENSENET121: lambda: create_densenet121(num_classes=num_classes, init_weights=init_weights),
+        densenet.MODEL_TYPE_DENSENET169: lambda: create_densenet169(num_classes=num_classes, init_weights=init_weights),
+        densenet.MODEL_TYPE_DENSENET201: lambda: create_densenet201(num_classes=num_classes, init_weights=init_weights),
+        mobilenet.MODEL_TYPE_MOBILENET_X1_0: lambda: create_mobilenet_x1_0(num_classes=num_classes, init_weights=init_weights),
+        mobilenet.MODEL_TYPE_MOBILENET_X0_5: lambda: create_mobilenet_x0_5(num_classes=num_classes, init_weights=init_weights),
+        mobilenet.MODEL_TYPE_MOBILENET_X0_75: lambda: create_mobilenet_x0_75(num_classes=num_classes, init_weights=init_weights),
     }
     return model_map[model_type]()
 

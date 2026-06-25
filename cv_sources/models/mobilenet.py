@@ -119,16 +119,16 @@ class MobileNet(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
 
-def mobilenet_x1_0(num_classes=1000, init_weights=True, **kwargs):
+def create_mobilenet_x1_0(num_classes=1000, init_weights=True, **kwargs):
     """MobileNetV1 model with 1.0 width multiplier (full size)"""
     return MobileNet(num_classes=num_classes, width_multiplier=1.0, init_weights=init_weights)
 
 
-def mobilenet_x0_5(num_classes=1000, init_weights=True, **kwargs):
+def create_mobilenet_x0_5(num_classes=1000, init_weights=True, **kwargs):
     """MobileNet with 0.5 width multiplier (smaller, faster)"""
     return MobileNet(num_classes=num_classes, width_multiplier=0.5, init_weights=init_weights)
 
 
-def mobilenet_x0_75(num_classes=1000, init_weights=True, **kwargs):
+def create_mobilenet_x0_75(num_classes=1000, init_weights=True, **kwargs):
     """MobileNet with 0.75 width multiplier"""
     return MobileNet(num_classes=num_classes, width_multiplier=0.75, init_weights=init_weights)

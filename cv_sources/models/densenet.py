@@ -117,16 +117,16 @@ class DenseNet(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
 
-def densenet121(num_classes=1000, init_weights=True, **kwargs):
+def create_densenet121(num_classes=1000, init_weights=True, **kwargs):
     # DenseNet-121: [6, 12, 24, 16], growth rate 32
     return DenseNet(block_config=[6, 12, 24, 16], growth_rate=32, num_classes=num_classes, init_weights=init_weights)
 
 
-def densenet169(num_classes=1000, init_weights=True, **kwargs):
+def create_densenet169(num_classes=1000, init_weights=True, **kwargs):
     # DenseNet-169: [6, 12, 32, 32], growth rate 32
     return DenseNet(block_config=[6, 12, 32, 32], growth_rate=32, num_classes=num_classes, init_weights=init_weights)
 
 
-def densenet201(num_classes=1000, init_weights=True, **kwargs):
+def create_densenet201(num_classes=1000, init_weights=True, **kwargs):
     # DenseNet-201: [6, 12, 48, 32], growth rate 32
     return DenseNet(block_config=[6, 12, 48, 32], growth_rate=32, num_classes=num_classes, init_weights=init_weights)

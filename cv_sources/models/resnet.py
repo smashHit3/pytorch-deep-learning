@@ -123,13 +123,13 @@ class ResNet(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
 
-def resnet18(num_classes=1000, init_weights=True, **kwargs):
+def create_resnet18(num_classes=1000, init_weights=True, **kwargs):
     return ResNet(BasicBlock, [2, 2, 2, 2], num_classes, init_weights)
 
 
-def resnet34(num_classes=1000, init_weights=True, **kwargs):
+def create_resnet34(num_classes=1000, init_weights=True, **kwargs):
     return ResNet(BasicBlock, [3, 4, 6, 3], num_classes, init_weights)
 
 
-def resnet50(num_classes=1000, init_weights=True, **kwargs):
+def create_resnet50(num_classes=1000, init_weights=True, **kwargs):
     return ResNet(Bottleneck, [3, 4, 6, 3], num_classes, init_weights)

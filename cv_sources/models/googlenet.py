@@ -105,6 +105,6 @@ class GoogleNet(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
 
-def googlenet(num_classes=1000, init_weights=True, **kwargs):
+def create_googlenet(num_classes=1000, init_weights=True, **kwargs):
     """GoogleNet model"""
     return GoogleNet(num_classes=num_classes, init_weights=init_weights)
