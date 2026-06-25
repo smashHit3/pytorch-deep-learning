@@ -55,8 +55,8 @@ def parse_args():
                         help="Hidden dimension for RNN/Transformer")
     parser.add_argument("--num-heads", type=int, default=4,
                         help="Transformer attention heads")
-    parser.add_argument("--num-layers", type=int, default=3,
-                        help="Transformer encoder layers")
+    parser.add_argument("--num-layers", type=int, default=None,
+                        help="Number of recurrent or transformer layers")
 
     # ---------------------- Optimizer Hyperparams ----------------------
     parser.add_argument("--epochs", type=int, default=10,
@@ -118,6 +118,8 @@ def auto_set_model_hyperparams(args):
         args.lr_step = default_step
     if args.lr_gamma is None:
         args.lr_gamma = default_gamma
+    if args.num_layers is None:
+        args.num_layers = 3 if args.model == transformer.MODEL_TYPE_TRANSFORMER else 2
 
 
 def set_random_seed(seed: int):
@@ -134,6 +136,7 @@ def build_model(model_type: str, vocab_size: int, num_classes: int, args):
             embedding_dim=args.embedding_dim,
             hidden_dim=args.hidden_dim,
             num_classes=num_classes,
+            num_layers=args.num_layers,
             padding_idx=0,
         ),
         gru.MODEL_TYPE_GRU: lambda: gru.gru_classifier(
@@ -141,6 +144,7 @@ def build_model(model_type: str, vocab_size: int, num_classes: int, args):
             embedding_dim=args.embedding_dim,
             hidden_dim=args.hidden_dim,
             num_classes=num_classes,
+            num_layers=args.num_layers,
             padding_idx=0,
         ),
         transformer.MODEL_TYPE_TRANSFORMER: lambda: transformer.transformer_classifier(

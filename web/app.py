@@ -28,7 +28,12 @@ from cv_sources.classification.inference import (
 from cv_sources.classification.train import MODEL_FILE_MAP
 from cv_sources.data_processor import dogs_vs_cats, fashion_mnist
 from nlp_sources.data_processor import text_data
-from nlp_sources.inference import NLPInferenceEngine, get_class_names, load_model_config
+from nlp_sources.inference import (
+    NLPInferenceEngine,
+    get_class_names,
+    load_model_config,
+    resolve_model_runtime_config,
+)
 from nlp_sources.train import MODEL_FILE_MAP as NLP_MODEL_FILE_MAP
 
 # Configure logging
@@ -60,7 +65,7 @@ TEXT_DATASETS: Dict[str, str] = {
 }
 
 model_cache: Dict[str, torch.nn.Module] = {}
-nlp_cache: Dict[Tuple[str, str, int, int, int, int, int], NLPInferenceEngine] = {}
+nlp_cache: Dict[Tuple[str, str, int, int, int, int, int, bool], NLPInferenceEngine] = {}
 
 
 # -------------------------- Helper Functions --------------------------
@@ -142,7 +147,7 @@ def get_nlp_model(model_type: str, requested_dataset: str = DEFAULT_TEXT_DATASET
     if not model_path.exists():
         raise FileNotFoundError(f"Model weights not found: {model_path}")
 
-    model_config = load_model_config(model_path)
+    model_config = resolve_model_runtime_config(model_type, model_path, load_model_config(model_path))
     resolved_dataset = str(model_config.get("dataset", requested_dataset))
     if resolved_dataset not in TEXT_DATASETS:
         raise ValueError(f"Unsupported dataset '{resolved_dataset}' in model config.")
@@ -153,6 +158,7 @@ def get_nlp_model(model_type: str, requested_dataset: str = DEFAULT_TEXT_DATASET
     num_layers = int(model_config.get("num_layers", 3))
     max_seq_len = int(model_config.get("max_seq_len", 256))
     num_classes = int(model_config.get("num_classes", 2 if resolved_dataset == text_data.DATASET_NAME_IMDB else 4))
+    bidirectional = bool(model_config.get("bidirectional", True))
 
     cache_key = (
         model_type,
@@ -162,6 +168,7 @@ def get_nlp_model(model_type: str, requested_dataset: str = DEFAULT_TEXT_DATASET
         num_heads,
         num_layers,
         max_seq_len,
+        bidirectional,
     )
     if cache_key in nlp_cache:
         return nlp_cache[cache_key], {
@@ -204,6 +211,7 @@ def get_nlp_model(model_type: str, requested_dataset: str = DEFAULT_TEXT_DATASET
         num_heads=num_heads,
         num_layers=num_layers,
         max_seq_len=max_seq_len,
+        bidirectional=bidirectional,
         device="cuda" if torch.cuda.is_available() else "cpu",
         fp16=False,
     )

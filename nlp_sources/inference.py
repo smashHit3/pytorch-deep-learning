@@ -3,11 +3,12 @@
 # NLP Inference Framework
 # -----------------------------------------------------------------------------
 
-import sys
 import json
 import logging
+import re
+import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 from argparse import ArgumentParser
@@ -73,6 +74,102 @@ def load_model_config(model_path: Path) -> dict:
     return {}
 
 
+def load_model_state_dict(model_path: Path, device: str | torch.device = "cpu") -> Dict[str, torch.Tensor]:
+    """Load model weights from disk."""
+    return torch.load(model_path, map_location=device, weights_only=True)
+
+
+def _set_resolved_config_value(
+    resolved_config: Dict[str, Any],
+    field_name: str,
+    inferred_value: Any,
+) -> None:
+    current_value = resolved_config.get(field_name)
+    if current_value is not None and current_value != inferred_value:
+        logger.warning(
+            "Overriding saved model config %s=%s with checkpoint-derived value %s",
+            field_name,
+            current_value,
+            inferred_value,
+        )
+    resolved_config[field_name] = inferred_value
+
+
+def _infer_recurrent_model_config(
+    state_dict: Dict[str, torch.Tensor],
+    module_name: str,
+) -> Dict[str, Any]:
+    layer_indices = set()
+    bidirectional = False
+
+    for key in state_dict:
+        prefix = f"{module_name}.weight_ih_l"
+        if not key.startswith(prefix):
+            continue
+
+        suffix = key[len(prefix):]
+        layer_index_text = suffix.split("_", 1)[0]
+        layer_indices.add(int(layer_index_text))
+        bidirectional = bidirectional or suffix.endswith("_reverse")
+
+    hidden_weight_key = f"{module_name}.weight_hh_l0"
+    return {
+        "embedding_dim": int(state_dict["embedding.weight"].shape[1]),
+        "hidden_dim": int(state_dict[hidden_weight_key].shape[1]),
+        "num_classes": int(state_dict["fc.weight"].shape[0]),
+        "num_layers": len(layer_indices),
+        "bidirectional": bidirectional,
+    }
+
+
+def _infer_transformer_model_config(state_dict: Dict[str, torch.Tensor]) -> Dict[str, Any]:
+    layer_indices = set()
+    hidden_dim = None
+
+    for key in state_dict:
+        layer_match = re.search(r"(?:^|\.)(?:transformer_encoder|encoder)\.layers\.(\d+)\.", key)
+        if layer_match:
+            layer_indices.add(int(layer_match.group(1)))
+
+        if hidden_dim is None and key.endswith(".linear1.weight"):
+            hidden_dim = int(state_dict[key].shape[0])
+
+    if hidden_dim is None:
+        raise KeyError("Unable to infer transformer hidden_dim from checkpoint state_dict")
+
+    return {
+        "embedding_dim": int(state_dict["embedding.weight"].shape[1]),
+        "hidden_dim": hidden_dim,
+        "num_classes": int(state_dict["fc.weight"].shape[0]),
+        "num_layers": len(layer_indices),
+        "max_seq_len": int(state_dict["pos_encoder.pe"].shape[1]),
+    }
+
+
+def resolve_model_runtime_config(
+    model_type: str,
+    model_path: Path,
+    model_config: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Resolve model hyperparameters from config, correcting stale values from the checkpoint when needed."""
+    resolved_config: Dict[str, Any] = dict(model_config or {})
+    state_dict = load_model_state_dict(model_path, device="cpu")
+
+    if model_type == lstm.MODEL_TYPE_LSTM:
+        inferred_config = _infer_recurrent_model_config(state_dict, "lstm")
+    elif model_type == gru.MODEL_TYPE_GRU:
+        inferred_config = _infer_recurrent_model_config(state_dict, "gru")
+    elif model_type == transformer.MODEL_TYPE_TRANSFORMER:
+        inferred_config = _infer_transformer_model_config(state_dict)
+    else:
+        raise ValueError(f"Unknown model type: {model_type}")
+
+    for field_name, inferred_value in inferred_config.items():
+        _set_resolved_config_value(resolved_config, field_name, inferred_value)
+
+    return resolved_config
+
+
 def load_vocab(dataset: str, model_path: Path, vocab_filename: Optional[str] = None):
     """Load a saved vocabulary if available; otherwise rebuild it from the dataset."""
     candidate_paths = []
@@ -101,7 +198,8 @@ class NLPInferenceEngine:
     def __init__(self, model_type: str, model_path: Path, vocab, num_classes: int,
                  embedding_dim: int = 128, hidden_dim: int = 256, 
                  device: str = "cpu", fp16: bool = False,
-                 num_heads: int = 4, num_layers: int = 3, max_seq_len: int = 512):
+                 num_heads: int = 4, num_layers: int = 3, max_seq_len: int = 512,
+                 bidirectional: bool = True):
         self.model_type = model_type
         self.model_path = model_path
         self.vocab = vocab
@@ -111,6 +209,7 @@ class NLPInferenceEngine:
         self.num_heads = num_heads
         self.num_layers = num_layers
         self.max_seq_len = max_seq_len
+        self.bidirectional = bidirectional
         
         self.model = self._build_model(embedding_dim, hidden_dim)
         self._load_weights()
@@ -134,6 +233,7 @@ class NLPInferenceEngine:
             embedding_dim=embedding_dim,
             hidden_dim=hidden_dim,
             num_classes=self.num_classes,
+            bidirectional=self.bidirectional,
             num_heads=self.num_heads,
             num_layers=self.num_layers,
             max_seq_len=self.max_seq_len,
@@ -146,7 +246,7 @@ class NLPInferenceEngine:
             raise FileNotFoundError(f"Model weights not found: {self.model_path}")
         
         logger.info(f"Loading model weights from {self.model_path}...")
-        state_dict = torch.load(self.model_path, map_location=self.device, weights_only=True)
+        state_dict = load_model_state_dict(self.model_path, device=self.device)
         self.model.load_state_dict(state_dict)
         self.model.eval()
         
@@ -202,7 +302,7 @@ def main():
         device = "cuda" if (torch.cuda.is_available() and not args.no_cuda) else "cpu"
         logger.info(f"Using device: {device}")
 
-        model_config = load_model_config(args.model_path)
+        model_config = resolve_model_runtime_config(args.model, args.model_path, load_model_config(args.model_path))
         dataset = model_config.get("dataset", args.dataset)
         vocab = load_vocab(dataset, args.model_path, model_config.get("vocab_filename"))
 
@@ -232,6 +332,7 @@ def main():
             num_heads=int(model_config.get("num_heads", args.num_heads)),
             num_layers=int(model_config.get("num_layers", args.num_layers)),
             max_seq_len=int(model_config.get("max_seq_len", args.max_seq_len)),
+            bidirectional=bool(model_config.get("bidirectional", True)),
         )
         
         texts = []
