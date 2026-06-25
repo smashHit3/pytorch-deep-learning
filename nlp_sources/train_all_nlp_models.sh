@@ -5,6 +5,8 @@ set -u -o pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 readonly SCRIPT_DIR
+REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
+readonly REPO_ROOT
 
 RESULTS_DIR="$SCRIPT_DIR/results"
 readonly RESULTS_DIR
@@ -14,7 +16,9 @@ DATASET=${DATASET:-imdb}
 EPOCHS=${EPOCHS:-10}
 BATCH_SIZE=${BATCH_SIZE:-32}
 
-cd "$SCRIPT_DIR" || exit 1
+export PYTHONPATH="$REPO_ROOT${PYTHONPATH:+:$PYTHONPATH}"
+
+cd "$REPO_ROOT" || exit 1
 
 echo "=========================================="
 echo "NLP Batch Training: All Models"
@@ -66,7 +70,7 @@ for entry in "${model_entries[@]}"; do
 
     echo "🚀 Starting training for $model_name..."
 
-    if "$PYTHON_BIN" train.py \
+    if "$PYTHON_BIN" -m nlp_sources.train \
         --model "$model_name" \
         --dataset "$DATASET" \
         --epochs "$EPOCHS" \
