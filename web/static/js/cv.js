@@ -75,7 +75,7 @@ async function uploadImage() {
 function renderPredictions(data) {
     topLabel.textContent = data.top_label;
     topConfidence.textContent = `${data.top_confidence}% confidence`;
-    resultModel.textContent = data.model_name;
+    resultModel.textContent = data.model_name.toUpperCase();
     predictionList.innerHTML = '';
 
     data.predictions.forEach((prediction) => {

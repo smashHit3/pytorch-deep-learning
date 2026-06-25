@@ -17,7 +17,7 @@
         <label for="model-select">Model</label>
         <select id="model-select">
             {% for model in available_models %}
-            <option value="{{ model }}" {% if model == model_name %}selected{% endif %}>{{ model }}</option>
+            <option value="{{ model }}" {% if model == model_name %}selected{% endif %}>{{ model | upper }}</option>
             {% endfor %}
         </select>
     </div>
