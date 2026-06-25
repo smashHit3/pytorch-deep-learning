@@ -1,82 +1,94 @@
-#!/bin/bash
-# Batch training script for all CV models on dogs_vs_cats dataset
-# This script is specifically for CV tasks and is located in cv_sources/
-# NLP scripts will be placed separately in nlp_sources/
+#!/usr/bin/env bash
+# Batch training script for all CV models on the dogs_vs_cats dataset.
+
+set -u -o pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-cd "$SCRIPT_DIR" || exit 1
+readonly SCRIPT_DIR
 
-RESULTS_DIR="results"
+RESULTS_DIR="$SCRIPT_DIR/results"
+readonly RESULTS_DIR
+
+PYTHON_BIN=${PYTHON_BIN:-python}
+DATASET=${DATASET:-dogs_vs_cats}
+EPOCHS=${EPOCHS:-10}
+BATCH_SIZE=${BATCH_SIZE:-32}
+
+cd "$SCRIPT_DIR" || exit 1
 
 echo "=========================================="
 echo "CV Batch Training: All Models on Dogs vs Cats"
 echo "=========================================="
+echo "Python: $PYTHON_BIN"
+echo "Dataset: $DATASET"
+echo "Epochs: $EPOCHS"
+echo "Batch size: $BATCH_SIZE"
 
-declare -A model_weight_map=(
-    ["alexnet"]="alexnet.pth"
-    ["vgg11"]="vgg11.pth"
-    ["vgg13"]="vgg13.pth"
-    ["vgg16"]="vgg16.pth"
-    ["vgg19"]="vgg19.pth"
-    ["googlenet"]="googlenet.pth"
-    ["resnet18"]="resnet18.pth"
-    ["resnet34"]="resnet34.pth"
-    ["resnet50"]="resnet50.pth"
-    ["densenet121"]="densenet121.pth"
-    ["densenet169"]="densenet169.pth"
-    ["densenet201"]="densenet201.pth"
-    ["mobilenet_x1_0"]="mobilenet_1_0.pth"
-    ["mobilenet_x0_5"]="mobilenet_0_5.pth"
-    ["mobilenet_x0_75"]="mobilenet_0_75.pth"
+mapfile -t model_entries < <(
+    "$PYTHON_BIN" - <<'PY'
+from cv_sources.classification.train import MODEL_FILE_MAP
+
+for model_name in sorted(MODEL_FILE_MAP):
+    print(f"{model_name}:{MODEL_FILE_MAP[model_name]}")
+PY
 )
 
-dataset="dogs_vs_cats"
-epochs=10
-batch_size=32
+if [ ${#model_entries[@]} -eq 0 ]; then
+    echo "No CV models were discovered from classification.train.MODEL_FILE_MAP."
+    exit 1
+fi
 
 check_model_exists() {
-    local model_name=$1
-    local weight_file=${model_weight_map[$model_name]}
-    
-    if [ -f "$RESULTS_DIR/$weight_file" ]; then
-        echo "ℹ️ Model weight file '$weight_file' already exists"
-        return 0
-    else
-        return 1
-    fi
+    local weight_file=$1
+    [ -f "$RESULTS_DIR/$weight_file" ]
 }
 
 mkdir -p "$RESULTS_DIR"
 
-for model in "${!model_weight_map[@]}"; do
+success_count=0
+skip_count=0
+failure_count=0
+
+for entry in "${model_entries[@]}"; do
+    model_name=${entry%%:*}
+    weight_file=${entry#*:}
+
     echo ""
     echo "=========================================="
-    echo "Processing: $model"
+    echo "Processing: $model_name"
     echo "=========================================="
-    
-    if check_model_exists "$model"; then
-        echo "⏭️ Skipping training for $model (weights already exist)"
+
+    if check_model_exists "$weight_file"; then
+        echo "⏭️ Skipping $model_name (found existing weights: $weight_file)"
+        skip_count=$((skip_count + 1))
         continue
     fi
-    
-    echo "🚀 Starting training for $model..."
-    
-    python classification/train.py \
-        --model "$model" \
-        --dataset "$dataset" \
-        --epochs "$epochs" \
-        --batch-size "$batch_size"
-    
-    if [ $? -eq 0 ]; then
-        echo "✅ $model training completed successfully!"
+
+    echo "🚀 Starting training for $model_name..."
+
+    if "$PYTHON_BIN" classification/train.py \
+        --model "$model_name" \
+        --dataset "$DATASET" \
+        --epochs "$EPOCHS" \
+        --batch-size "$BATCH_SIZE"; then
+        echo "✅ $model_name training completed successfully."
+        success_count=$((success_count + 1))
     else
-        echo "❌ $model training failed!"
+        echo "❌ $model_name training failed."
+        failure_count=$((failure_count + 1))
     fi
 done
 
 echo ""
 echo "=========================================="
-echo "CV training completed!"
+echo "CV training completed"
 echo "=========================================="
-echo "Weights saved to: $RESULTS_DIR/"
+echo "Succeeded: $success_count"
+echo "Skipped: $skip_count"
+echo "Failed: $failure_count"
+echo "Weights directory: $RESULTS_DIR"
 ls -la "$RESULTS_DIR"/*.pth 2>/dev/null || echo "No weight files found"
+
+if [ "$failure_count" -ne 0 ]; then
+    exit 1
+fi

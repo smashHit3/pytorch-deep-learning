@@ -1,69 +1,94 @@
-#!/bin/bash
-# Batch training script for all NLP models
-# This script is specifically for NLP tasks and is located in nlp_sources/
+#!/usr/bin/env bash
+# Batch training script for all NLP models.
+
+set -u -o pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-cd "$SCRIPT_DIR" || exit 1
+readonly SCRIPT_DIR
 
-RESULTS_DIR="results"
+RESULTS_DIR="$SCRIPT_DIR/results"
+readonly RESULTS_DIR
+
+PYTHON_BIN=${PYTHON_BIN:-python}
+DATASET=${DATASET:-imdb}
+EPOCHS=${EPOCHS:-10}
+BATCH_SIZE=${BATCH_SIZE:-32}
+
+cd "$SCRIPT_DIR" || exit 1
 
 echo "=========================================="
 echo "NLP Batch Training: All Models"
 echo "=========================================="
+echo "Python: $PYTHON_BIN"
+echo "Dataset: $DATASET"
+echo "Epochs: $EPOCHS"
+echo "Batch size: $BATCH_SIZE"
 
-declare -A model_weight_map=(
-    ["lstm"]="lstm.pth"
-    ["gru"]="gru.pth"
-    ["transformer"]="transformer.pth"
+mapfile -t model_entries < <(
+    "$PYTHON_BIN" - <<'PY'
+from nlp_sources.train import MODEL_FILE_MAP
+
+for model_name in sorted(MODEL_FILE_MAP):
+    print(f"{model_name}:{MODEL_FILE_MAP[model_name]}")
+PY
 )
 
-dataset="imdb"
-epochs=10
-batch_size=32
+if [ ${#model_entries[@]} -eq 0 ]; then
+    echo "No NLP models were discovered from nlp_sources.train.MODEL_FILE_MAP."
+    exit 1
+fi
 
 check_model_exists() {
-    local model_name=$1
-    local weight_file=${model_weight_map[$model_name]}
-    
-    if [ -f "$RESULTS_DIR/$weight_file" ]; then
-        echo "ℹ️ Model weight file '$weight_file' already exists"
-        return 0
-    else
-        return 1
-    fi
+    local weight_file=$1
+    [ -f "$RESULTS_DIR/$weight_file" ]
 }
 
 mkdir -p "$RESULTS_DIR"
 
-for model in "${!model_weight_map[@]}"; do
+success_count=0
+skip_count=0
+failure_count=0
+
+for entry in "${model_entries[@]}"; do
+    model_name=${entry%%:*}
+    weight_file=${entry#*:}
+
     echo ""
     echo "=========================================="
-    echo "Processing: $model"
+    echo "Processing: $model_name"
     echo "=========================================="
-    
-    if check_model_exists "$model"; then
-        echo "⏭️ Skipping training for $model (weights already exist)"
+
+    if check_model_exists "$weight_file"; then
+        echo "⏭️ Skipping $model_name (found existing weights: $weight_file)"
+        skip_count=$((skip_count + 1))
         continue
     fi
-    
-    echo "🚀 Starting training for $model..."
-    
-    python train.py \
-        --model "$model" \
-        --dataset "$dataset" \
-        --epochs "$epochs" \
-        --batch-size "$batch_size"
-    
-    if [ $? -eq 0 ]; then
-        echo "✅ $model training completed successfully!"
+
+    echo "🚀 Starting training for $model_name..."
+
+    if "$PYTHON_BIN" train.py \
+        --model "$model_name" \
+        --dataset "$DATASET" \
+        --epochs "$EPOCHS" \
+        --batch-size "$BATCH_SIZE"; then
+        echo "✅ $model_name training completed successfully."
+        success_count=$((success_count + 1))
     else
-        echo "❌ $model training failed!"
+        echo "❌ $model_name training failed."
+        failure_count=$((failure_count + 1))
     fi
 done
 
 echo ""
 echo "=========================================="
-echo "NLP training completed!"
+echo "NLP training completed"
 echo "=========================================="
-echo "Weights saved to: $RESULTS_DIR/"
+echo "Succeeded: $success_count"
+echo "Skipped: $skip_count"
+echo "Failed: $failure_count"
+echo "Weights directory: $RESULTS_DIR"
 ls -la "$RESULTS_DIR"/*.pth 2>/dev/null || echo "No weight files found"
+
+if [ "$failure_count" -ne 0 ]; then
+    exit 1
+fi
