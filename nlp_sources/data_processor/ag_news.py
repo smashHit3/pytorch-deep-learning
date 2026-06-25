@@ -4,16 +4,19 @@ AG News classification dataset
 @Description: Data loading and downloading for AG News dataset
 """
 
+import csv
+import shutil
 from pathlib import Path
-import zipfile
 import urllib.request
+import zipfile
+
 from nlp_sources.data_processor.base import build_vocab_and_loaders
 
 DATASET_NAME_AG_NEWS = "ag_news"
 DATASET_URL = "https://raw.githubusercontent.com/mhjabreel/CharCnn_Keras/master/data/ag_news_csv.zip"
 
 
-def download_ag_news(data_dir: Path):
+def download_ag_news(data_dir: Path) -> None:
     """
     Download and extract AG News dataset if not already present
     """
@@ -44,9 +47,11 @@ def download_ag_news(data_dir: Path):
     # Move files from subdirectory if needed
     sub_dir = data_dir / 'ag_news_csv'
     if sub_dir.exists():
-        import shutil
         for file in sub_dir.iterdir():
-            shutil.move(str(file), str(data_dir))
+            target = data_dir / file.name
+            if target.exists():
+                target.unlink()
+            shutil.move(str(file), str(target))
         sub_dir.rmdir()
     
     # Clean up zip file
@@ -54,27 +59,26 @@ def download_ag_news(data_dir: Path):
     print(f"✅ AG News dataset extracted to {data_dir}")
 
 
-def load_ag_news_data(data_dir: Path, max_samples=None):
+def load_ag_news_data(file_path: Path, max_samples: int | None = None) -> tuple[list[str], list[int]]:
     """
     Load AG News classification dataset
     """
-    texts = []
-    labels = []
-    
-    for filename in ['train.csv', 'test.csv']:
-        file_path = data_dir / filename
-        if not file_path.exists():
-            continue
-            
-        with open(file_path, 'r', encoding='utf-8') as f:
-            for i, line in enumerate(f):
-                if max_samples and i >= max_samples:
-                    break
-                parts = line.strip().split(',', 2)
-                if len(parts) >= 3:
-                    labels.append(int(parts[0]) - 1)
-                    texts.append(parts[2])
-                    
+    texts: list[str] = []
+    labels: list[int] = []
+
+    with file_path.open('r', encoding='utf-8', newline='') as f:
+        reader = csv.reader(f)
+        for i, row in enumerate(reader):
+            if max_samples is not None and i >= max_samples:
+                break
+            if len(row) < 3:
+                continue
+            label = int(row[0]) - 1
+            # Keep both title and description for a stronger text signal.
+            text = f"{row[1]} {row[2]}".strip()
+            labels.append(label)
+            texts.append(text)
+
     return texts, labels
 
 
@@ -92,11 +96,14 @@ def load_data_ag_news(data_root=None, max_samples=None, batch_size=32, max_seq_l
     # Download if needed
     download_ag_news(ag_news_dir)
     
-    # Load data
-    all_texts, all_labels = load_ag_news_data(ag_news_dir, max_samples)
-    split_idx = int(0.8 * len(all_texts))
-    train_texts, train_labels = all_texts[:split_idx], all_labels[:split_idx]
-    test_texts, test_labels = all_texts[split_idx:], all_labels[split_idx:]
+    train_file = ag_news_dir / 'train.csv'
+    test_file = ag_news_dir / 'test.csv'
+    if not train_file.exists() or not test_file.exists():
+        raise FileNotFoundError(f"AG News files not found in {ag_news_dir}")
+
+    # Load canonical split shipped with the dataset.
+    train_texts, train_labels = load_ag_news_data(train_file, max_samples)
+    test_texts, test_labels = load_ag_news_data(test_file, max_samples)
     num_classes = 4
     
     # Build vocab and create loaders

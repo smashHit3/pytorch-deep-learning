@@ -7,13 +7,30 @@ IMDB sentiment analysis dataset
 from pathlib import Path
 import tarfile
 import urllib.request
+
 from nlp_sources.data_processor.base import build_vocab_and_loaders
 
 DATASET_NAME_IMDB = "imdb"
 DATASET_URL = "https://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz"
 
 
-def download_imdb(data_dir: Path):
+def _is_within_directory(directory: Path, target: Path) -> bool:
+    try:
+        target.resolve().relative_to(directory.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def _safe_extract_tar(tar: tarfile.TarFile, destination: Path) -> None:
+    for member in tar.getmembers():
+        member_target = destination / member.name
+        if not _is_within_directory(destination, member_target):
+            raise RuntimeError(f"Unsafe path in tar archive: {member.name}")
+    tar.extractall(destination)
+
+
+def download_imdb(data_dir: Path) -> None:
     """
     Download and extract IMDB dataset if not already present
     """
@@ -42,7 +59,7 @@ def download_imdb(data_dir: Path):
     # Extract the dataset
     print(f"📦 Extracting IMDB dataset...")
     with tarfile.open(tar_path, 'r:gz') as tar:
-        tar.extractall(data_dir)
+        _safe_extract_tar(tar, data_dir)
     
     # Clean up tar file
     tar_path.unlink()
@@ -53,20 +70,20 @@ def load_imdb_data(data_dir: Path, max_samples=None):
     """
     Load IMDB sentiment analysis dataset
     """
-    texts = []
-    labels = []
+    texts: list[str] = []
+    labels: list[int] = []
     
     for label, folder in enumerate(['neg', 'pos']):
         folder_path = data_dir / folder
         if not folder_path.exists():
             continue
             
-        files = list(folder_path.iterdir())
+        files = sorted(file for file in folder_path.iterdir() if file.is_file() and file.suffix == '.txt')
         if max_samples:
             files = files[:max_samples]
             
         for file_path in files:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with file_path.open('r', encoding='utf-8') as f:
                 texts.append(f.read())
                 labels.append(label)
                 
