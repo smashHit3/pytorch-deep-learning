@@ -1,80 +1,119 @@
 # PyTorch Deep Learning
 
-A local project for learning and experimenting with PyTorch image classification models.
+Local PyTorch experiments for image classification, text classification, and a small web UI for running both.
 
-## Structure
+## Project layout
 
-```
+```text
 pytorch-deep-learning/
-├── cv_sources/                 # Computer Vision training framework
-│   ├── classification/         # Unified classification training
-│   │   └── train.py            # Main training script
-│   ├── models/                 # Model implementations
-│   │   ├── alexnet.py          # AlexNet implementation
-│   │   ├── vgg.py              # VGG implementations
-│   │   ├── googlenet.py        # GoogLeNet implementation
-│   │   ├── resnet.py           # ResNet implementations
-│   │   ├── densenet.py         # DenseNet implementations
-│   │   └── mobilenet.py        # MobileNetV1 implementations
-│   ├── data_processor.py       # Data loading utilities
-│   ├── results/                # Trained model weights
-│   └── train_all_cv_models.sh  # Batch train all CV models
-├── nlp_sources/                # Future NLP experiments
-├── CNN_d2l/                    # Tutorial examples from Deep Learning with PyTorch
-├── CV_paper/                   # Legacy CV experiments
-└── train_all_models.sh         # Root batch training script
+├── cv_sources/
+│   ├── classification/          # CV training and inference entrypoints
+│   ├── data_processor/          # Dogs vs Cats and FashionMNIST loaders
+│   ├── models/                  # AlexNet, VGG, GoogLeNet, ResNet, DenseNet, MobileNetV1
+│   ├── results/                 # CV model weights
+│   └── train_all_cv_models.sh   # Batch CV training script
+├── nlp_sources/
+│   ├── data_processor/          # IMDB and AG News loaders
+│   ├── models/                  # LSTM, GRU, Transformer classifiers
+│   ├── results/                 # NLP model weights and vocab/config files
+│   ├── inference.py             # NLP inference entrypoint
+│   ├── train.py                 # NLP training entrypoint
+│   └── train_all_nlp_models.sh  # Batch NLP training script
+├── web/
+│   ├── app.py                   # FastAPI app for CV and NLP demos
+│   ├── static/                  # CSS and JavaScript
+│   └── templates/               # HTML templates
+└── README.md
 ```
 
-## Supported Models
+## Supported models
 
-| Model | Variants |
-|-------|----------|
-| AlexNet | alexnet |
-| VGG | vgg11, vgg13, vgg16, vgg19 |
-| GoogLeNet | googlenet |
-| ResNet | resnet18, resnet34, resnet50 |
-| DenseNet | densenet121, densenet169, densenet201 |
-| MobileNetV1 | mobilenet_x1_0, mobilenet_x0_75, mobilenet_x0_5 |
+### Computer vision
 
-## Quick Start
+| Family | Variants |
+| --- | --- |
+| AlexNet | `alexnet` |
+| VGG | `vgg11`, `vgg13`, `vgg16`, `vgg19` |
+| GoogLeNet | `googlenet` |
+| ResNet | `resnet18`, `resnet34`, `resnet50` |
+| DenseNet | `densenet121`, `densenet169`, `densenet201` |
+| MobileNetV1 | `mobilenet_x1_0`, `mobilenet_x0_75`, `mobilenet_x0_5` |
 
-### Train a single model
+### NLP
+
+| Family | Variants |
+| --- | --- |
+| Recurrent | `lstm`, `gru` |
+| Transformer | `transformer` |
+
+## Quick start
+
+### Run the web app
 
 ```bash
-cd cv_sources/classification
-python train.py --model mobilenet_x1_0 --dataset dogs_vs_cats --epochs 10
+python web/app.py
 ```
 
-### Train all CV models (with skip if weights exist)
+Then open `http://localhost:8000`.
+
+### Train one CV model
 
 ```bash
-cd cv_sources
-./train_all_cv_models.sh
+python cv_sources/classification/train.py --model mobilenet_x1_0 --dataset dogs_vs_cats --epochs 10
 ```
 
-### Available options
+### Train one NLP model
 
 ```bash
-python train.py --help
+python nlp_sources/train.py --model lstm --dataset imdb --epochs 10
 ```
 
-## Training Options
+### Batch training
 
-- `--model`: Select model (see table above)
-- `--dataset`: `dogs_vs_cats` or `fashion_mnist`
-- `--epochs`: Number of training epochs
-- `--batch-size`: Batch size for training
-- `--lr`: Learning rate
-- `--optimizer`: `adam` or `sgd`
-- `--save-path`: Custom path to save weights
+```bash
+./cv_sources/train_all_cv_models.sh
+```
 
-## Dataset Requirements
+```bash
+./nlp_sources/train_all_nlp_models.sh
+```
 
-- **Dogs vs Cats**: Place `cat.*.jpg` and `dog.*.jpg` files in `dataset/dogs_vs_cats/train/`
-- **Fashion MNIST**: Automatically downloaded if not present
+## Dataset notes
+
+- **Dogs vs Cats**: extract raw images to `dataset/dogs_vs_cats/train/` with filenames like `cat.123.jpg` and `dog.123.jpg`.
+- **FashionMNIST**: downloaded automatically under `dataset/`.
+- **IMDB / AG News**: handled by the NLP data loaders.
+
+## Useful commands
+
+### CV training help
+
+```bash
+python cv_sources/classification/train.py --help
+```
+
+### CV inference from the CLI
+
+```bash
+python cv_sources/classification/inference.py \
+  --image path/to/image.jpg \
+  --model resnet18 \
+  --dataset dogs_vs_cats
+```
+
+### NLP inference from the CLI
+
+```bash
+python nlp_sources/inference.py \
+  --model lstm \
+  --model-path nlp_sources/results/lstm.pth \
+  --text "This movie was surprisingly good." \
+  --output-json
+```
 
 ## Notes
 
-- Model weights are saved to `cv_sources/results/` by default
-- The batch training script skips models with existing weights
-- MobileNet variants use width multipliers: 1.0 (full size), 0.75, 0.5
+- CV weights are stored in `cv_sources/results/`.
+- NLP weights are stored in `nlp_sources/results/`.
+- MobileNet model names use the public `mobilenet_x...` form, while the existing checkpoint filenames remain `mobilenet_1_0.pth`, `mobilenet_0_75.pth`, and `mobilenet_0_5.pth`.
+- The web app only shows models whose weight files already exist on disk.
