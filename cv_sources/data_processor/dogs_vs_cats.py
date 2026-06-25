@@ -60,9 +60,9 @@ def group_files_by_label(source_dir: Path):
 
 def split_files(file_paths, train_ratio, val_ratio, seed):
     """Split file paths into train/val/test sets"""
-    random.seed(seed)
     file_paths = list(file_paths)
-    random.shuffle(file_paths)
+    rng = random.Random(seed)
+    rng.shuffle(file_paths)
     total = len(file_paths)
     train_end = int(total * train_ratio)
     val_end = train_end + int(total * val_ratio)
@@ -112,6 +112,18 @@ def split_raw_dataset(
         output_dir = source_path.parent / "split"
     else:
         output_dir = Path(output_dir)
+
+    resolved_source_path = source_path.resolve()
+    resolved_output_dir = output_dir.resolve()
+    if (
+        resolved_output_dir == resolved_source_path
+        or resolved_source_path in resolved_output_dir.parents
+        or resolved_output_dir in resolved_source_path.parents
+    ):
+        raise ValueError(
+            f"Unsafe output directory '{output_dir}': it must not be the source directory, "
+            "an ancestor of it, or a nested child inside it."
+        )
 
     if output_dir.exists():
         shutil.rmtree(output_dir)

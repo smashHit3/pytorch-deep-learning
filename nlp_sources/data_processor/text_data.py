@@ -14,11 +14,11 @@ DATASET_LOADERS = {
 }
 
 
-def load_data(text_dataset, data_root=None, max_samples=None, batch_size=32, max_seq_len=512):
+def load_data(dataset, data_root=None, max_samples=None, batch_size=32, max_seq_len=512):
     """
     Load and preprocess text data (unified interface)
     """
-    loader = DATASET_LOADERS.get(text_dataset)
+    loader = DATASET_LOADERS.get(dataset)
     if loader is None:
-        raise ValueError(f"Unknown dataset: {text_dataset}")
+        raise ValueError(f"Unknown dataset: {dataset}")
     return loader(data_root, max_samples, batch_size, max_seq_len)

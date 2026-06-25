@@ -183,8 +183,8 @@ class PositionalEncoding(nn.Module):
         return self.dropout(x)
 
 
-def transformer_classifier(vocab_size: int = 10000, embedding_dim: int = 256, num_heads: int = 4,
-                           num_layers: int = 3, hidden_dim: int = 512, num_classes: int = 2,
+def transformer_classifier(vocab_size: int = 10000, embedding_dim: int = 128, num_heads: int = 4,
+                           num_layers: int = 3, hidden_dim: int = 256, num_classes: int = 2,
                            dropout: float = 0.5, max_seq_len: int = 512, padding_idx: int = 0,
                            **kwargs) -> TransformerClassifier:
     """
@@ -192,10 +192,10 @@ def transformer_classifier(vocab_size: int = 10000, embedding_dim: int = 256, nu
     
     Args:
         vocab_size: Size of vocabulary (default: 10000)
-        embedding_dim: Dimension of word embeddings (d_model) (default: 256)
+        embedding_dim: Dimension of word embeddings (d_model) (default: 128)
         num_heads: Number of attention heads (default: 4)
         num_layers: Number of transformer encoder layers (default: 3)
-        hidden_dim: Dimension of feedforward network (default: 512)
+        hidden_dim: Dimension of feedforward network (default: 256)
         num_classes: Number of output classes (default: 2)
         dropout: Dropout probability (default: 0.5)
         max_seq_len: Maximum sequence length (default: 512)

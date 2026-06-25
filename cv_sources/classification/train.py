@@ -44,7 +44,7 @@ ORIG_DEFAULT_SAVE_PATH = PROJECT_ROOT / "results" / "default_model.pth"
 
 
 def parse_args():
-    parser = ArgumentParser(description="Unified CV Training Framework (AlexNet/VGG/GoogLeNet)")
+    parser = ArgumentParser(description="Unified CV Training Framework")
 
     # ---------------------- Dataset Config ----------------------
     parser.add_argument("--dataset", type=str, required=False,
@@ -238,7 +238,7 @@ def build_model(model_type: str, num_classes: int, init_weights: bool):
 
 
 def build_optimizer(model: nn.Module, opt_type: str, lr: float, momentum: float, weight_decay: float):
-    """Build optimizer with L2 weight decay (compatible with AlexNet)"""
+    """Build an optimizer with momentum and weight decay settings."""
     if opt_type.lower() == "sgd":
         return optim.SGD(
             model.parameters(),

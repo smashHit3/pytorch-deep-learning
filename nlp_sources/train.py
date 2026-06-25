@@ -72,6 +72,8 @@ def parse_args():
     # ---------------------- Learning Rate Scheduler ----------------------
     parser.add_argument("--use-scheduler", action="store_true", default=True,
                         help="Enable StepLR learning rate scheduler")
+    parser.add_argument("--no-scheduler", dest="use_scheduler", action="store_false",
+                        help="Disable learning rate scheduler")
     parser.add_argument("--lr-step", type=int, default=None,
                         help="Step interval for LR decay")
     parser.add_argument("--lr-gamma", type=float, default=None,

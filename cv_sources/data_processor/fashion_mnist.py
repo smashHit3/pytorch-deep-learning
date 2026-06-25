@@ -7,7 +7,7 @@ FashionMNIST dataset
 import torchvision
 from torchvision import transforms
 from torch.utils import data
-from cv_sources.data_processor.base import _project_root
+from cv_sources.data_processor.base import _cv_sources_root
 
 DATASET_NAME_FASHION_MNIST = "fashion_mnist"
 NUM_CLASSES = 10
@@ -36,9 +36,9 @@ def load_data_fashion_mnist(batch_size: int, resize: int = None, num_workers: in
     # torchvision.datasets.FashionMNIST automatically downloads if not present
     print("📦 Loading FashionMNIST dataset...")
     mnist_train = torchvision.datasets.FashionMNIST(
-        root=_project_root() / "dataset", train=True, transform=trans, download=True)
+        root=_cv_sources_root() / "dataset", train=True, transform=trans, download=True)
     mnist_val = torchvision.datasets.FashionMNIST(
-        root=_project_root() / "dataset", train=False, transform=trans, download=True)
+        root=_cv_sources_root() / "dataset", train=False, transform=trans, download=True)
     
     print(f"✅ FashionMNIST loaded: {len(mnist_train)} train, {len(mnist_val)} val")
     
