@@ -3,8 +3,8 @@
 # NLP Training Framework
 # -----------------------------------------------------------------------------
 
+import json
 import sys
-import os
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -15,7 +15,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
-from torch.optim.lr_scheduler import CosineAnnealingLR
 from argparse import ArgumentParser
 
 from nlp_sources.data_processor import text_data
@@ -54,6 +53,10 @@ def parse_args():
                         help="Embedding dimension")
     parser.add_argument("--hidden-dim", type=int, default=256,
                         help="Hidden dimension for RNN/Transformer")
+    parser.add_argument("--num-heads", type=int, default=4,
+                        help="Transformer attention heads")
+    parser.add_argument("--num-layers", type=int, default=3,
+                        help="Transformer encoder layers")
 
     # ---------------------- Optimizer Hyperparams ----------------------
     parser.add_argument("--epochs", type=int, default=10,
@@ -130,22 +133,40 @@ def build_model(model_type: str, vocab_size: int, num_classes: int, args):
             vocab_size=vocab_size,
             embedding_dim=args.embedding_dim,
             hidden_dim=args.hidden_dim,
-            num_classes=num_classes
+            num_classes=num_classes,
+            padding_idx=0,
         ),
         gru.MODEL_TYPE_GRU: lambda: gru.gru_classifier(
             vocab_size=vocab_size,
             embedding_dim=args.embedding_dim,
             hidden_dim=args.hidden_dim,
-            num_classes=num_classes
+            num_classes=num_classes,
+            padding_idx=0,
         ),
         transformer.MODEL_TYPE_TRANSFORMER: lambda: transformer.transformer_classifier(
             vocab_size=vocab_size,
             embedding_dim=args.embedding_dim,
+            num_heads=args.num_heads,
+            num_layers=args.num_layers,
             hidden_dim=args.hidden_dim,
-            num_classes=num_classes
+            num_classes=num_classes,
+            max_seq_len=args.max_seq_len,
+            padding_idx=0,
         ),
     }
     return model_map[model_type]()
+
+
+def build_optimizer(model: nn.Module, args):
+    if args.optimizer == "sgd":
+        return optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay, momentum=0.9)
+    return optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+
+
+def build_scheduler(optimizer, args):
+    if not args.use_scheduler:
+        return None
+    return StepLR(optimizer, step_size=args.lr_step, gamma=args.lr_gamma)
 
 
 def train_one_epoch(model, device, loader, criterion, optimizer):
@@ -209,7 +230,7 @@ def train_loop(model, device, train_loader, val_loader, optimizer, scheduler, cr
             scheduler.step()
 
 
-def save_weights(model: nn.Module, save_path: Path, vocab=None, dataset: str = "imdb"):
+def save_weights(model: nn.Module, save_path: Path, vocab=None, dataset: str = "imdb", config: dict | None = None):
     save_path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(model.state_dict(), save_path)
     print(f"\n✅ Model weights saved to: {save_path.resolve()}")
@@ -219,6 +240,12 @@ def save_weights(model: nn.Module, save_path: Path, vocab=None, dataset: str = "
         vocab_path = save_path.parent / f"vocab_{dataset}.json"
         vocab.save(str(vocab_path))
         print(f"✅ Vocabulary saved to: {vocab_path.resolve()}")
+
+    if config is not None:
+        config_path = save_path.with_suffix(".json")
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=2, sort_keys=True)
+        print(f"✅ Model config saved to: {config_path.resolve()}")
 
 
 def main():
@@ -246,14 +273,30 @@ def main():
     model = build_model(args.model, vocab.size, num_classes, args).to(device)
 
     criterion = nn.CrossEntropyLoss()
-    # Use AdamW optimizer which is recommended for NLP tasks
-    optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    # Use CosineAnnealingLR scheduler which is better than StepLR for most cases
-    scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs) if args.use_scheduler else None
+    optimizer = build_optimizer(model, args)
+    scheduler = build_scheduler(optimizer, args)
 
     train_loop(model, device, train_loader, val_loader, optimizer, scheduler, criterion, args.epochs)
 
-    save_weights(model, args.save_path, vocab=vocab, dataset=args.dataset)
+    config = {
+        "model": args.model,
+        "dataset": args.dataset,
+        "embedding_dim": args.embedding_dim,
+        "hidden_dim": args.hidden_dim,
+        "num_heads": getattr(args, "num_heads", None),
+        "num_layers": getattr(args, "num_layers", None),
+        "max_seq_len": args.max_seq_len,
+        "num_classes": num_classes,
+        "padding_idx": 0,
+        "optimizer": args.optimizer,
+        "lr": args.lr,
+        "weight_decay": args.weight_decay,
+        "scheduler": "step" if scheduler is not None else None,
+        "lr_step": args.lr_step,
+        "lr_gamma": args.lr_gamma,
+        "vocab_filename": f"vocab_{args.dataset}.json",
+    }
+    save_weights(model, args.save_path, vocab=vocab, dataset=args.dataset, config=config)
 
 
 if __name__ == "__main__":

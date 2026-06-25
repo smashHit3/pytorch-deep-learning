@@ -7,7 +7,7 @@ import sys
 import json
 import logging
 from pathlib import Path
-from typing import List, Dict, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import torch
 from argparse import ArgumentParser
@@ -45,7 +45,11 @@ def parse_args():
                         help="Embedding dimension (must match training)")
     parser.add_argument("--hidden-dim", type=int, default=256,
                         help="Hidden dimension (must match training)")
-    parser.add_argument("--max-seq-len", type=int, default=256,
+    parser.add_argument("--num-heads", type=int, default=4,
+                        help="Transformer attention heads (must match training)")
+    parser.add_argument("--num-layers", type=int, default=3,
+                        help="Transformer encoder layers (must match training)")
+    parser.add_argument("--max-seq-len", type=int, default=512,
                         help="Maximum sequence length")
     parser.add_argument("--no-cuda", action="store_true",
                         help="Force use CPU")
@@ -59,6 +63,34 @@ def parse_args():
     return parser.parse_args()
 
 
+def load_model_config(model_path: Path) -> dict:
+    """Load optional model metadata saved alongside the weights."""
+    config_candidates = [model_path.with_suffix(".json"), model_path.parent / f"{model_path.stem}.json"]
+    for config_path in config_candidates:
+        if config_path.exists():
+            with open(config_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+    return {}
+
+
+def load_vocab(dataset: str, model_path: Path, vocab_filename: Optional[str] = None):
+    """Load a saved vocabulary if available; otherwise rebuild it from the dataset."""
+    candidate_paths = []
+    if vocab_filename:
+        candidate_paths.append(model_path.parent / vocab_filename)
+    candidate_paths.append(model_path.parent / f"vocab_{dataset}.json")
+
+    for vocab_path in candidate_paths:
+        if vocab_path.exists():
+            logger.info(f"Loading vocabulary from {vocab_path}...")
+            from nlp_sources.data_processor.base import Vocabulary
+            return Vocabulary.load(str(vocab_path))
+
+    logger.info(f"Rebuilding vocabulary from {dataset}...")
+    _, _, vocab, _ = text_data.load_data(dataset, batch_size=1, max_seq_len=512)
+    return vocab
+
+
 class NLPInferenceEngine:
     """
     NLP Inference Engine for text classification.
@@ -68,13 +100,17 @@ class NLPInferenceEngine:
     
     def __init__(self, model_type: str, model_path: Path, vocab, num_classes: int,
                  embedding_dim: int = 128, hidden_dim: int = 256, 
-                 device: str = "cpu", fp16: bool = False):
+                 device: str = "cpu", fp16: bool = False,
+                 num_heads: int = 4, num_layers: int = 3, max_seq_len: int = 512):
         self.model_type = model_type
         self.model_path = model_path
         self.vocab = vocab
         self.num_classes = num_classes
         self.device = torch.device(device)
         self.fp16 = fp16
+        self.num_heads = num_heads
+        self.num_layers = num_layers
+        self.max_seq_len = max_seq_len
         
         self.model = self._build_model(embedding_dim, hidden_dim)
         self._load_weights()
@@ -97,7 +133,11 @@ class NLPInferenceEngine:
             vocab_size=self.vocab.size,
             embedding_dim=embedding_dim,
             hidden_dim=hidden_dim,
-            num_classes=self.num_classes
+            num_classes=self.num_classes,
+            num_heads=self.num_heads,
+            num_layers=self.num_layers,
+            max_seq_len=self.max_seq_len,
+            padding_idx=0,
         ).to(self.device)
     
     def _load_weights(self):
@@ -110,9 +150,11 @@ class NLPInferenceEngine:
         self.model.load_state_dict(state_dict)
         self.model.eval()
         
-        if self.fp16:
+        if self.fp16 and self.device.type == "cuda":
             self.model = self.model.half()
             logger.info("Enabled half-precision inference")
+        elif self.fp16:
+            logger.warning("fp16 requested on CPU; using float32 inference instead")
     
     def preprocess_texts(self, texts: List[str], max_seq_len: int) -> torch.Tensor:
         """Preprocess a list of texts into model input tensors."""
@@ -137,9 +179,6 @@ class NLPInferenceEngine:
         
         input_tensor = self.preprocess_texts(texts, max_seq_len)
         
-        if self.fp16:
-            input_tensor = input_tensor.half()
-        
         outputs = self.model(input_tensor)
         probs = torch.softmax(outputs, dim=1)
         preds = torch.argmax(probs, dim=1).tolist()
@@ -162,13 +201,23 @@ def main():
     try:
         device = "cuda" if (torch.cuda.is_available() and not args.no_cuda) else "cpu"
         logger.info(f"Using device: {device}")
-        
-        logger.info(f"Rebuilding vocabulary from {args.dataset}...")
-        _, _, vocab, num_classes = text_data.load_data(
-            args.dataset, 
-            batch_size=args.batch_size, 
-            max_seq_len=args.max_seq_len
-        )
+
+        model_config = load_model_config(args.model_path)
+        dataset = model_config.get("dataset", args.dataset)
+        vocab = load_vocab(dataset, args.model_path, model_config.get("vocab_filename"))
+
+        if model_config:
+            logger.info(f"Loaded model config from disk: {model_config}")
+
+        if "num_classes" in model_config:
+            num_classes = int(model_config["num_classes"])
+        else:
+            _, _, _, num_classes = text_data.load_data(
+                dataset,
+                batch_size=args.batch_size,
+                max_seq_len=args.max_seq_len
+            )
+
         logger.info(f"Vocabulary size: {vocab.size}")
         
         engine = NLPInferenceEngine(
@@ -176,10 +225,13 @@ def main():
             model_path=args.model_path,
             vocab=vocab,
             num_classes=num_classes,
-            embedding_dim=args.embedding_dim,
-            hidden_dim=args.hidden_dim,
+            embedding_dim=int(model_config.get("embedding_dim", args.embedding_dim)),
+            hidden_dim=int(model_config.get("hidden_dim", args.hidden_dim)),
             device=device,
-            fp16=args.fp16
+            fp16=args.fp16,
+            num_heads=int(model_config.get("num_heads", args.num_heads)),
+            num_layers=int(model_config.get("num_layers", args.num_layers)),
+            max_seq_len=int(model_config.get("max_seq_len", args.max_seq_len)),
         )
         
         texts = []
@@ -192,7 +244,7 @@ def main():
             logger.error("Please provide --text or --text-file")
             sys.exit(1)
         
-        class_names = get_class_names(args.dataset)
+        class_names = get_class_names(dataset)
         results = []
         
         for i in range(0, len(texts), args.batch_size):
