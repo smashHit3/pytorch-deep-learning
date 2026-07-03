@@ -1,4 +1,4 @@
-"""Utilities and demo helpers for sequence modeling with a fixed Markov window."""
+"""Sequence model demo translated from chapter_recurrent-neural-networks/sequence.ipynb."""
 
 from dataclasses import dataclass
 from typing import Iterable, Sequence
@@ -10,9 +10,9 @@ from torch.utils import data
 
 
 @dataclass(frozen=True)
-class SequenceDemoConfig:
+class SequenceModelConfig:
     total_steps: int = 1000
-    tau: int = 100
+    tau: int = 4
     batch_size: int = 16
     n_train: int = 600
     epochs: int = 5
@@ -20,9 +20,10 @@ class SequenceDemoConfig:
     freq: float = 0.01
     noise_std: float = 0.2
     hidden_dim: int = 10
+    max_steps: int = 64
 
 
-def load_curve(
+def make_sequence(
     total_steps: int = 1000,
     freq: float = 0.01,
     noise_std: float = 0.2,
@@ -30,18 +31,6 @@ def load_curve(
     time = torch.arange(1, total_steps + 1, dtype=torch.float32)
     x = torch.sin(freq * time) + torch.normal(0, noise_std, (total_steps,))
     return time, x
-
-
-def set_axes(axes, xlabel, ylabel, xlim, ylim, xscale, yscale, legend) -> None:
-    axes.set_xlabel(xlabel)
-    axes.set_ylabel(ylabel)
-    axes.set_xscale(xscale)
-    axes.set_yscale(yscale)
-    axes.set_xlim(xlim)
-    axes.set_ylim(ylim)
-    if legend:
-        axes.legend(legend)
-    axes.grid(True, alpha=0.3)
 
 
 def _has_one_axis(values) -> bool:
@@ -56,6 +45,18 @@ def _to_plot_values(values):
     return values
 
 
+def set_axes(axes, xlabel, ylabel, xlim, ylim, xscale, yscale, legend) -> None:
+    axes.set_xlabel(xlabel)
+    axes.set_ylabel(ylabel)
+    axes.set_xscale(xscale)
+    axes.set_yscale(yscale)
+    axes.set_xlim(xlim)
+    axes.set_ylim(ylim)
+    if legend:
+        axes.legend(legend)
+    axes.grid(True, alpha=0.3)
+
+
 def plot(
     X,
     Y=None,
@@ -67,7 +68,7 @@ def plot(
     xscale: str = "linear",
     yscale: str = "linear",
     fmts: Sequence[str] = ("-", "m--", "g-.", "r:"),
-    figsize: tuple[int, int] = (10, 4),
+    figsize: tuple[int, int] = (6, 3),
     axes=None,
 ) -> None:
     legend = legend or []
@@ -95,7 +96,10 @@ def plot(
 
     set_axes(axes, xlabel, ylabel, xlim, ylim, xscale, yscale, legend)
     plt.tight_layout()
-    plt.show()
+    if "agg" in plt.get_backend().lower():
+        plt.close(axes.figure)
+    else:
+        plt.show()
 
 
 def load_array(
@@ -107,10 +111,7 @@ def load_array(
     return data.DataLoader(dataset, batch_size=batch_size, shuffle=is_train)
 
 
-def build_markov_features(
-    series: torch.Tensor,
-    tau: int,
-) -> tuple[torch.Tensor, torch.Tensor]:
+def build_features(series: torch.Tensor, tau: int) -> tuple[torch.Tensor, torch.Tensor]:
     if tau <= 0:
         raise ValueError("tau must be positive")
     if len(series) <= tau:
@@ -125,12 +126,12 @@ def build_markov_features(
 
 def init_weights(module) -> None:
     if isinstance(module, nn.Linear):
-        nn.init.xavier_normal_(module.weight)
+        nn.init.xavier_uniform_(module.weight)
 
 
-def get_net(input_dim: int, hidden_dim: int = 10) -> nn.Module:
+def get_net(tau: int = 4, hidden_dim: int = 10) -> nn.Module:
     net = nn.Sequential(
-        nn.Linear(input_dim, hidden_dim),
+        nn.Linear(tau, hidden_dim),
         nn.ReLU(),
         nn.Linear(hidden_dim, 1),
     )
@@ -138,7 +139,7 @@ def get_net(input_dim: int, hidden_dim: int = 10) -> nn.Module:
     return net
 
 
-def evaluate_loss(net, data_iter, loss) -> float:
+def evaluate_loss(net: nn.Module, data_iter, loss) -> float:
     was_training = net.training
     net.eval()
     total_loss = 0.0
@@ -146,28 +147,16 @@ def evaluate_loss(net, data_iter, loss) -> float:
 
     with torch.no_grad():
         for X, y in data_iter:
-            out = net(X)
-            y = y.reshape(out.shape)
-            batch_loss = loss(out, y)
-            if batch_loss.ndim == 0:
-                total_loss += batch_loss.item() * y.numel()
-                total_count += y.numel()
-            else:
-                total_loss += batch_loss.sum().item()
-                total_count += batch_loss.numel()
+            batch_loss = loss(net(X), y)
+            total_loss += batch_loss.sum().item()
+            total_count += batch_loss.numel()
 
     if was_training:
         net.train()
     return total_loss / total_count
 
 
-def train(
-    net,
-    train_iter,
-    loss,
-    epochs: int,
-    lr: float,
-) -> list[float]:
+def train(net: nn.Module, train_iter, loss, epochs: int, lr: float) -> list[float]:
     trainer = torch.optim.Adam(net.parameters(), lr)
     history = []
 
@@ -176,7 +165,7 @@ def train(
         for X, y in train_iter:
             trainer.zero_grad()
             batch_loss = loss(net(X), y)
-            batch_loss.backward()
+            batch_loss.sum().backward()
             trainer.step()
 
         epoch_loss = evaluate_loss(net, train_iter, loss)
@@ -186,95 +175,144 @@ def train(
     return history
 
 
+def predict_onestep(net: nn.Module, features: torch.Tensor) -> torch.Tensor:
+    return net(features)
+
+
 def predict_multistep(
     net: nn.Module,
     series: torch.Tensor,
     tau: int,
-    warmup_steps: int,
+    n_train: int,
 ) -> torch.Tensor:
     preds = torch.zeros_like(series)
-    preds[:warmup_steps] = series[:warmup_steps]
-
-    for i in range(warmup_steps, len(series)):
-        window = preds[i - tau : i].reshape((1, -1))
-        preds[i] = net(window).reshape(())
-
+    preds[: n_train + tau] = series[: n_train + tau]
+    for i in range(n_train + tau, len(series)):
+        preds[i] = net(preds[i - tau : i].reshape((1, -1))).reshape(())
     return preds
 
 
-def plot_one_step_predictions(
+def predict_k_step(
+    net: nn.Module,
+    series: torch.Tensor,
+    tau: int,
+    max_steps: int,
+) -> torch.Tensor:
+    rows = len(series) - tau - max_steps + 1
+    features = torch.zeros((rows, tau + max_steps), dtype=series.dtype)
+
+    for i in range(tau):
+        features[:, i] = series[i : i + rows]
+
+    for i in range(tau, tau + max_steps):
+        features[:, i] = net(features[:, i - tau : i]).reshape(-1)
+
+    return features
+
+
+def plot_data(time: torch.Tensor, series: torch.Tensor) -> None:
+    plot(time, [series], "time", "x", xlim=[1, len(time)], figsize=(6, 3))
+
+
+def plot_onestep_predictions(
     time: torch.Tensor,
     series: torch.Tensor,
     tau: int,
-    preds: torch.Tensor,
+    onestep_preds: torch.Tensor,
 ) -> None:
     plot(
         [time, time[tau:]],
-        [series, preds.reshape(-1)],
-        xlabel="time",
-        ylabel="x",
+        [series, onestep_preds.reshape(-1)],
+        "time",
+        "x",
         legend=["data", "1-step preds"],
         xlim=[1, len(time)],
+        figsize=(6, 3),
     )
 
 
-def plot_prediction_comparison(
+def plot_multistep_predictions(
     time: torch.Tensor,
     series: torch.Tensor,
     tau: int,
     n_train: int,
-    one_step_preds: torch.Tensor,
+    onestep_preds: torch.Tensor,
     multistep_preds: torch.Tensor,
 ) -> None:
     plot(
         [time, time[tau:], time[n_train + tau :]],
-        [series, one_step_preds.reshape(-1), multistep_preds[n_train + tau :]],
-        xlabel="time",
-        ylabel="x",
+        [series, onestep_preds.reshape(-1), multistep_preds[n_train + tau :]],
+        "time",
+        "x",
         legend=["data", "1-step preds", "multistep preds"],
         xlim=[1, len(time)],
+        figsize=(6, 3),
+    )
+
+
+def plot_k_step_predictions(
+    time: torch.Tensor,
+    forecast_features: torch.Tensor,
+    tau: int,
+    max_steps: int,
+    steps: Sequence[int] = (1, 4, 16, 64),
+) -> None:
+    if any(step > max_steps for step in steps):
+        raise ValueError("all steps must be less than or equal to max_steps")
+
+    plot(
+        [time[tau + step - 1 : len(time) - max_steps + step] for step in steps],
+        [forecast_features[:, tau + step - 1] for step in steps],
+        "time",
+        "x",
+        legend=[f"{step}-step preds" for step in steps],
+        xlim=[tau + 1, len(time)],
+        figsize=(6, 3),
     )
 
 
 def run_sequence_model_demo(
-    config: SequenceDemoConfig | None = None,
-):
-    config = config or SequenceDemoConfig()
+    config: SequenceModelConfig | None = None,
+) -> dict[str, object]:
+    config = config or SequenceModelConfig()
 
-    time, x = load_curve(
+    time, x = make_sequence(
         total_steps=config.total_steps,
         freq=config.freq,
         noise_std=config.noise_std,
     )
-    plot(time, x, xlabel="time", ylabel="x", legend=["x"])
+    plot_data(time, x)
 
-    features, labels = build_markov_features(x, config.tau)
+    features, labels = build_features(x, config.tau)
     train_iter = load_array(
         (features[: config.n_train], labels[: config.n_train]),
-        batch_size=config.batch_size,
+        config.batch_size,
         is_train=True,
     )
 
-    net = get_net(input_dim=config.tau, hidden_dim=config.hidden_dim)
-    loss = nn.MSELoss()
+    net = get_net(config.tau, config.hidden_dim)
+    loss = nn.MSELoss(reduction="none")
     history = train(net, train_iter, loss, config.epochs, config.lr)
 
-    one_step_preds = net(features)
-    plot_one_step_predictions(time, x, config.tau, one_step_preds)
+    onestep_preds = predict_onestep(net, features)
+    plot_onestep_predictions(time, x, config.tau, onestep_preds)
 
-    multistep_preds = predict_multistep(
-        net,
-        x,
-        tau=config.tau,
-        warmup_steps=config.n_train + config.tau,
-    )
-    plot_prediction_comparison(
+    multistep_preds = predict_multistep(net, x, config.tau, config.n_train)
+    plot_multistep_predictions(
         time,
         x,
-        tau=config.tau,
-        n_train=config.n_train,
-        one_step_preds=one_step_preds,
-        multistep_preds=multistep_preds,
+        config.tau,
+        config.n_train,
+        onestep_preds,
+        multistep_preds,
+    )
+
+    forecast_features = predict_k_step(net, x, config.tau, config.max_steps)
+    plot_k_step_predictions(
+        time,
+        forecast_features,
+        config.tau,
+        config.max_steps,
     )
 
     return {
@@ -287,23 +325,28 @@ def run_sequence_model_demo(
         "net": net,
         "loss": loss,
         "history": history,
-        "one_step_preds": one_step_preds,
+        "onestep_preds": onestep_preds,
         "multistep_preds": multistep_preds,
+        "forecast_features": forecast_features,
     }
 
 
 __all__ = [
-    "SequenceDemoConfig",
-    "build_markov_features",
+    "SequenceModelConfig",
+    "build_features",
     "evaluate_loss",
     "get_net",
     "init_weights",
     "load_array",
-    "load_curve",
+    "make_sequence",
     "plot",
-    "plot_one_step_predictions",
-    "plot_prediction_comparison",
+    "plot_data",
+    "plot_k_step_predictions",
+    "plot_multistep_predictions",
+    "plot_onestep_predictions",
+    "predict_k_step",
     "predict_multistep",
+    "predict_onestep",
     "run_sequence_model_demo",
     "set_axes",
     "train",
