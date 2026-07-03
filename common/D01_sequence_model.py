@@ -83,7 +83,9 @@ def plot(
         X = X * len(Y)
 
     if axes is None:
-        _, axes = plt.subplots(figsize=figsize)
+        fig, axes = plt.subplots(figsize=figsize)
+    else:
+        fig = axes.figure
     axes.cla()
 
     for x, y, fmt in zip(X, Y, fmts):
@@ -97,7 +99,7 @@ def plot(
     set_axes(axes, xlabel, ylabel, xlim, ylim, xscale, yscale, legend)
     plt.tight_layout()
     if "agg" in plt.get_backend().lower():
-        plt.close(axes.figure)
+        plt.close(fig)
     else:
         plt.show()
 
