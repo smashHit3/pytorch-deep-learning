@@ -1,6 +1,6 @@
 """Shared utilities for educational demos."""
 
-from .D001_sequence_model import (
+from .D01_sequence_model import (
     SequenceDemoConfig,
     build_markov_features,
     evaluate_loss,
