@@ -1,0 +1,23 @@
+"""Day 6: Build a minimal training loop with dummy data.
+
+A dependency-light, local demonstration for the Day 6 LLM roadmap topic.
+It deliberately uses a toy-sized example: inspect its assumptions before transferring
+any conclusion to a trained language model or production system.
+"""
+
+import torch
+
+def main():
+    torch.manual_seed(0)
+    x = torch.arange(1., 6.).unsqueeze(1)
+    target = 2 * x + 1
+    model = torch.nn.Linear(1, 1)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.05, weight_decay=0.01)
+    for _ in range(40):
+        loss = torch.nn.functional.mse_loss(model(x), target)
+        optimizer.zero_grad(); loss.backward(); optimizer.step()
+    print("x dtype/device:", x.dtype, x.device, "final loss:", round(loss.item(), 5))
+    print("prediction at 6:", round(model(torch.tensor([[6.]])).item(), 3))
+
+if __name__ == "__main__":
+    main()
