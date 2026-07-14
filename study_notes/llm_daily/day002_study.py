@@ -36,6 +36,7 @@ def tensor_operations(x, y):
 
 def save_and_load_summary(summary):
     """Write a summary to a temporary file and return its contents."""
+    # The temporary directory is removed after the block, so this I/O example leaves no lesson artifact.
     with TemporaryDirectory() as directory:
         path = Path(directory) / "day2_summary.txt"
         path.write_text(summary, encoding="utf-8")
@@ -43,6 +44,7 @@ def save_and_load_summary(summary):
 
 
 def main():
+    # The appended topic shows that the same list is passed into the session object by reference.
     topics = ["lists", "dictionaries", "classes", "file I/O", "PyTorch"]
     topics.append("clean code")
     session_data = {"day": 2, "focus": "Python organization", "completed": True}
@@ -59,6 +61,7 @@ def main():
     print("Topic count:", session.topic_count())
     print("Saved summary:", save_and_load_summary(session.summary()))
 
+    # Matching vector shapes let tensor_operations return independent elementwise result tensors.
     x = torch.tensor([1.0, 2.0, 3.0])
     y = torch.tensor([4.0, 5.0, 6.0])
     results = tensor_operations(x, y)
@@ -71,5 +74,6 @@ def main():
     print("mean of x:", x.mean())
 
 
+# The direct-execution guard lets the reusable class and helpers be imported without producing lesson output.
 if __name__ == "__main__":
     main()

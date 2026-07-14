@@ -7,14 +7,18 @@ def toy_subwords(word):
 
 
 def main():
+    # Whitespace splitting, the hand-written subword rule, and character extraction offer three granularities.
     text = "tokenization helps models"
     words = text.split()
+    # The nested comprehension flattens the pieces for every word into one model input sequence.
     subwords = [piece for word in words for piece in toy_subwords(word)]
+    # Removing spaces makes characters represent lexical content rather than whitespace separators.
     characters = list(text.replace(" ", ""))
     print("word tokens:", words)
     print("subword tokens:", subwords)
     print("character tokens:", characters)
     print("A production tokenizer learns its splits from data; this split only exposes the granularity tradeoff.")
 
+# Tokenization trades vocabulary size against sequence length: smaller units cover more text but create longer inputs.
 if __name__ == "__main__":
     main()

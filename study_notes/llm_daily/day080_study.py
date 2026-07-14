@@ -9,22 +9,27 @@ import math
 import re
 
 def vector(text, vocabulary):
+    # Count vectors use the shared vocabulary order so corresponding coordinates represent the same word.
     words = re.findall(r"[a-z]+", text.lower())
     return [words.count(word) for word in vocabulary]
 
 def cosine(left, right):
+    # Length normalization prevents a longer document from winning solely because it repeats more vocabulary words.
     dot = sum(a*b for a,b in zip(left,right)); size = math.sqrt(sum(a*a for a in left))*math.sqrt(sum(b*b for b in right))
     return dot/size if size else 0.0
 
 def main():
+    # The local vocabulary defines the query representation, leaving unseen terms with no score contribution.
     documents = [("attention", "Attention combines queries, keys, and values."), ("retrieval", "Retrieval ranks local documents for a query."), ("safety", "Grounded answers should cite supplied evidence.")]
     vocabulary = sorted(set(re.findall(r"[a-z]+", " ".join(text for _, text in documents).lower())))
     query = "How does retrieval rank documents?"; query_vector = vector(query, vocabulary)
     ranked = sorted(((cosine(query_vector, vector(text, vocabulary)), name, text) for name,text in documents), reverse=True)
+    # A zero best score triggers abstention, avoiding an answer assembled from a document with no lexical evidence.
     score, name, text = ranked[0]
     print("top local result:", name, "score:", round(score, 3))
     print("grounded context:", text)
     print("answer:", text if score else "I do not have supporting local evidence.")
 
+# Nearest-neighbor retrieval ranks documents by similarity to the query vector rather than by their original order.
 if __name__ == "__main__":
     main()

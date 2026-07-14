@@ -13,8 +13,10 @@ class MiniGPT(torch.nn.Module):
         self.head = torch.nn.Linear(width, vocabulary_size)
 
     def forward(self, ids):
+        # Embedding converts [batch, time] IDs into width-six hidden vectors for every token position.
         hidden = self.embedding(ids)
         length = ids.size(1)
+        # The square mask prevents a position from attending to later IDs that are also its training targets.
         mask = torch.triu(torch.ones(length, length, dtype=torch.bool), diagonal=1)
         attended, _ = self.attention(hidden, hidden, hidden, attn_mask=mask, need_weights=False)
         return self.head(hidden + attended)
@@ -22,10 +24,12 @@ class MiniGPT(torch.nn.Module):
 
 def main():
     torch.manual_seed(0)
+    # One repeating six-ID sequence supplies five input positions and five shifted target positions per epoch.
     data = torch.tensor([[0, 1, 2, 0, 1, 2]])
     model = MiniGPT(vocabulary_size=3)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.08)
     for epoch in range(3):
+        # Flattening [batch, time, vocab] logits aligns cross-entropy with one target ID for every time step.
         loss = torch.nn.functional.cross_entropy(model(data[:, :-1]).reshape(-1, 3), data[:, 1:].reshape(-1))
         optimizer.zero_grad()
         loss.backward()
@@ -33,5 +37,6 @@ def main():
         print("epoch", epoch + 1, "next-token loss", round(loss.item(), 4))
     print("The causal mask prevents each position from reading later target tokens.")
 
+# Flattening batch and time axes lets cross-entropy score every next-token prediction against its shifted target.
 if __name__ == "__main__":
     main()
